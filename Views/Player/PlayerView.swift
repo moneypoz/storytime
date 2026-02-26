@@ -1,7 +1,9 @@
 import SwiftUI
+import AVFoundation
 
-/// Full-screen story player with dreamscape background and liquid glass orb
-/// Single primary action: Play/Pause
+/// Full-screen story player with dreamscape background and liquid glass orb.
+/// Uses AVSpeechSynthesizer for expressive TTS playback with mood-based prosody.
+/// Falls back to a progress timer for books without a script.
 struct PlayerView: View {
 
     // MARK: - Properties
@@ -10,38 +12,22 @@ struct PlayerView: View {
     let namespace: Namespace.ID
     let onDismiss: () -> Void
 
-    // MARK: - State
+    // MARK: - State Objects
 
-    @State private var isPlaying = false
-    @State private var audioLevel: Float = 0.0
-    @State private var progress: Double = 0.0
-    @State private var showControls = true
-    @State private var isFinished = false
+    @StateObject private var ttsPlayer: TTSPlayer
 
     // MARK: - Atmosphere
 
     @State private var glowVibrancy: AIGlowVibrancy = .standard
     @State private var atmosphereOpacity: Double = 1.0
 
-    // MARK: - Timers
+    // MARK: - Init
 
-    @State private var playbackTimer: Timer?
-    @State private var levelSimulator: Timer?
-
-    // MARK: - Constants
-
-    private let storyDuration: Double = 180 // 3 minutes
-
-    // MARK: - Segment Tracking
-
-    private var currentSegmentIndex: Int {
-        guard let count = book.script?.segments.count, count > 0 else { return 0 }
-        return min(Int(progress * Double(count)), count - 1)
-    }
-
-    private var currentMood: StoryScript.Segment.Mood? {
-        guard let segments = book.script?.segments else { return nil }
-        return segments[currentSegmentIndex].mood
+    init(book: Book, namespace: Namespace.ID, onDismiss: @escaping () -> Void) {
+        self.book = book
+        self.namespace = namespace
+        self.onDismiss = onDismiss
+        self._ttsPlayer = StateObject(wrappedValue: TTSPlayer(script: book.script))
     }
 
     // MARK: - Body
@@ -53,20 +39,18 @@ struct PlayerView: View {
 
             // Content
             VStack(spacing: 0) {
-                // Close button
                 closeButton
                     .padding(.top, 16)
 
                 Spacer()
 
-                // Book title
                 titleSection
                     .padding(.bottom, 40)
 
-                // Liquid glass orb with progress (adaptive tinting from book cover)
+                // Liquid glass orb — animated by real TTS audio level
                 LiquidGlassOrb(
-                    audioLevel: audioLevel,
-                    progress: progress,
+                    audioLevel: ttsPlayer.audioLevel,
+                    progress: ttsPlayer.progress,
                     accentColor: book.coverGradient.first ?? DesignSystem.primaryPurple
                 )
                 .aiGlowBackground(
@@ -77,16 +61,15 @@ struct PlayerView: View {
 
                 Spacer()
 
-                // Play/Pause control
                 playPauseButton
                     .padding(.bottom, 60)
             }
-            // Fade player controls out as the finish view blooms in
-            .opacity(isFinished ? 0 : 1)
-            .animation(.easeInOut(duration: 0.3), value: isFinished)
+            // Fade controls out as the finish view blooms in
+            .opacity(ttsPlayer.isFinished ? 0 : 1)
+            .animation(.easeInOut(duration: 0.3), value: ttsPlayer.isFinished)
 
-            // Story finish celebration — appears over the dreamscape background
-            if isFinished {
+            // Story finish celebration
+            if ttsPlayer.isFinished {
                 StoryFinishView(
                     book: book,
                     onReadAgain: restartPlayback,
@@ -95,13 +78,13 @@ struct PlayerView: View {
                 .zIndex(2)
             }
         }
-        .onChange(of: currentSegmentIndex) {
+        .onChange(of: ttsPlayer.currentSegmentIndex) {
             updateAtmosphere()
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
         .onDisappear {
-            stopPlayback()
+            ttsPlayer.stop()
         }
     }
 
@@ -113,7 +96,7 @@ struct PlayerView: View {
 
             Button {
                 withAnimation(DesignSystem.slowTransition) {
-                    stopPlayback()
+                    ttsPlayer.stop()
                     onDismiss()
                 }
             } label: {
@@ -144,9 +127,9 @@ struct PlayerView: View {
     }
 
     private var playbackStatus: String {
-        if isPlaying {
+        if ttsPlayer.isPlaying {
             return "Playing.."
-        } else if progress > 0 {
+        } else if ttsPlayer.progress > 0 {
             return "Paused"
         } else {
             return "Tap to begin"
@@ -157,109 +140,202 @@ struct PlayerView: View {
 
     private var playPauseButton: some View {
         Button {
-            togglePlayback()
+            if ttsPlayer.isPlaying {
+                ttsPlayer.pause()
+            } else {
+                ttsPlayer.play()
+            }
         } label: {
             ZStack {
                 // Glass background
                 Circle()
                     .fill(.clear)
                     .frame(width: 80, height: 80)
-                    .glassEffect(.clear.interactive(), in: .circle)
+                    .glassEffect(.regular.interactive(), in: .circle)
 
                 // Icon
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                Image(systemName: ttsPlayer.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 28, weight: .medium))
                     .foregroundStyle(.white)
-                    .offset(x: isPlaying ? 0 : 3) // Visual centering for play icon
+                    .offset(x: ttsPlayer.isPlaying ? 0 : 3) // Visual centering for play icon
                     .contentTransition(.symbolEffect(.replace))
             }
         }
         .buttonStyle(GlassButtonStyle())
     }
 
-    // MARK: - Playback Control
-
-    private func togglePlayback() {
-        withAnimation(DesignSystem.slowTransition) {
-            isPlaying.toggle()
-        }
-
-        if isPlaying {
-            startPlayback()
-        } else {
-            pausePlayback()
-        }
-    }
-
-    private func startPlayback() {
-        // Progress timer
-        playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            if progress < 1.0 {
-                progress += 0.1 / storyDuration
-            } else {
-                stopPlayback()
-                withAnimation(.easeInOut(duration: 0.6)) {
-                    isFinished = true
-                }
-            }
-        }
-
-        // Audio level simulator (replace with real TTS levels)
-        levelSimulator = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
-            // Simulate natural speech patterns
-            let base: Float = 0.3
-            let variation = Float.random(in: -0.2...0.3)
-            let newLevel = max(0, min(1, base + variation))
-
-            // Smooth transition
-            audioLevel = audioLevel * 0.6 + newLevel * 0.4
-        }
-    }
-
-    private func pausePlayback() {
-        playbackTimer?.invalidate()
-        levelSimulator?.invalidate()
-
-        withAnimation(.easeOut(duration: 0.3)) {
-            audioLevel = 0
-        }
-    }
+    // MARK: - Actions
 
     private func restartPlayback() {
-        progress = 0
-        audioLevel = 0
-        withAnimation(.easeInOut(duration: 0.4)) {
-            isFinished = false
-        }
+        ttsPlayer.restart()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            isPlaying = true
-            startPlayback()
+            ttsPlayer.play()
         }
     }
 
     private func updateAtmosphere() {
         withAnimation(.easeInOut(duration: 1.5)) {
-            switch currentMood {
+            switch ttsPlayer.currentMood {
             case .excited:
                 glowVibrancy = .vivid
                 atmosphereOpacity = 1.0
             case .sleepy:
                 glowVibrancy = .subtle
                 atmosphereOpacity = 0.2
-            case .normal, .none:
+            case .normal, nil:
                 glowVibrancy = .standard
                 atmosphereOpacity = 1.0
             }
         }
     }
+}
 
-    private func stopPlayback() {
+// MARK: - TTS Player
+
+/// Observable TTS engine wrapping AVSpeechSynthesizer.
+/// Plays StoryScript segments sequentially with mood-based prosody.
+/// Falls back to a progress timer for books without a script.
+final class TTSPlayer: NSObject, ObservableObject {
+
+    @Published private(set) var isPlaying = false
+    @Published private(set) var currentSegmentIndex = 0
+    @Published private(set) var audioLevel: Float = 0.0
+    @Published private(set) var isFinished = false
+    @Published private(set) var progress: Double = 0.0
+    @Published private(set) var currentMood: StoryScript.Segment.Mood?
+
+    private let synthesizer = AVSpeechSynthesizer()
+    private let segments: [StoryScript.Segment]
+    private var levelTimer: Timer?
+    private var progressTimer: Timer?
+    private let fallbackDuration: Double = 180
+
+    init(script: StoryScript?) {
+        self.segments = script?.segments ?? []
+        super.init()
+        synthesizer.delegate = self
+    }
+
+    // MARK: - Public Control
+
+    func play() {
+        guard !isFinished else { return }
+        configureAudioSession()
+        isPlaying = true
+
+        if segments.isEmpty {
+            startFallbackTimer()
+        } else if synthesizer.isPaused {
+            synthesizer.continueSpeaking()
+        } else if !synthesizer.isSpeaking {
+            speakCurrentSegment()
+        }
+
+        startLevelSimulation()
+    }
+
+    func pause() {
         isPlaying = false
-        playbackTimer?.invalidate()
-        levelSimulator?.invalidate()
-        playbackTimer = nil
-        levelSimulator = nil
-        audioLevel = 0
+        if segments.isEmpty {
+            progressTimer?.invalidate()
+        } else {
+            synthesizer.pauseSpeaking(at: .word)
+        }
+        stopLevelSimulation()
+    }
+
+    func stop() {
+        isPlaying = false
+        progressTimer?.invalidate()
+        synthesizer.stopSpeaking(at: .immediate)
+        stopLevelSimulation()
+    }
+
+    func restart() {
+        stop()
+        currentSegmentIndex = 0
+        progress = 0
+        isFinished = false
+        currentMood = nil
+    }
+
+    // MARK: - Private
+
+    private func speakCurrentSegment() {
+        guard currentSegmentIndex < segments.count else {
+            DispatchQueue.main.async {
+                self.isFinished = true
+                self.isPlaying = false
+                self.stopLevelSimulation()
+            }
+            return
+        }
+
+        let segment = segments[currentSegmentIndex]
+        currentMood = segment.mood
+
+        let utterance = AVSpeechUtterance(string: segment.text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * Float(segment.mood.rate)
+        utterance.pitchMultiplier = Float(segment.mood.pitch)
+        utterance.postUtteranceDelay = 0.4
+
+        synthesizer.speak(utterance)
+        progress = Double(currentSegmentIndex) / Double(segments.count)
+    }
+
+    private func startFallbackTimer() {
+        let tickInterval: Double = 0.1
+        let increment = tickInterval / fallbackDuration
+        progressTimer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                if self.progress < 1.0 {
+                    self.progress += increment
+                } else {
+                    self.progressTimer?.invalidate()
+                    self.isFinished = true
+                    self.isPlaying = false
+                    self.stopLevelSimulation()
+                }
+            }
+        }
+    }
+
+    private func configureAudioSession() {
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+
+    private func startLevelSimulation() {
+        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let base: Float = 0.3
+            let variation = Float.random(in: -0.2...0.35)
+            let target = max(0, min(1, base + variation))
+            DispatchQueue.main.async {
+                self.audioLevel = self.audioLevel * 0.6 + target * 0.4
+            }
+        }
+    }
+
+    private func stopLevelSimulation() {
+        levelTimer?.invalidate()
+        levelTimer = nil
+        DispatchQueue.main.async { self.audioLevel = 0 }
+    }
+}
+
+// MARK: - AVSpeechSynthesizerDelegate
+
+extension TTSPlayer: AVSpeechSynthesizerDelegate {
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async {
+            self.currentSegmentIndex += 1
+            if self.isPlaying {
+                self.speakCurrentSegment()
+            }
+        }
     }
 }
 
