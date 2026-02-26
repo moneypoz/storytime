@@ -6,8 +6,34 @@ struct Book: Identifiable, Hashable {
     let coverGradient: [Color]
     let icon: String
     let isPremium: Bool
+    /// Bundled story text with prosody tags. `nil` for books without preloaded content.
+    let script: StoryScript?
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        coverGradient: [Color],
+        icon: String,
+        isPremium: Bool,
+        script: StoryScript? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.coverGradient = coverGradient
+        self.icon = icon
+        self.isPremium = isPremium
+        self.script = script
+    }
 
     static let samples: [Book] = [
+        // MARK: Featured free book — bundled Aesop story
+        Book(
+            title: "The Lion and the Mouse",
+            coverGradient: [Color(hex: "F59E0B"), Color(hex: "D97706"), Color(hex: "92400E")],
+            icon: "pawprint.fill",
+            isPremium: false,
+            script: PreloadedLibrary.lionAndMouse
+        ),
         Book(
             id: UUID(),
             title: "Luna's Dream",

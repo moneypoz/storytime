@@ -290,10 +290,10 @@ struct LibraryView: View {
                 }
             }) {
                 HStack(spacing: 14) {
-                    Image(systemName: "play.fill")
+                    Image(systemName: book.script != nil ? "book.fill" : "play.fill")
                         .font(.system(size: 18, weight: .semibold))
 
-                    Text("Play Story")
+                    Text(book.script != nil ? "Read Now" : "Play Story")
                         .font(.system(size: 18, weight: .semibold, design: .rounded))
                 }
                 .foregroundStyle(.white)
