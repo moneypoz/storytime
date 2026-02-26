@@ -5,7 +5,7 @@
          <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "storytime"
+               BlueprintIdentifier = "E100000000000000000000AC"
                BuildableName = "storytime.app"
                BlueprintName = "storytime"
                ReferencedContainer = "container:storytime.xcodeproj">
