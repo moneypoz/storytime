@@ -2,12 +2,28 @@ name: Appetize Build
 on: [push]
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Pre-boot Simulator (Fix for Exit Code 65)
+        run: |
+          # Start the simulator in the background early
+          xcrun simctl boot "iPhone 16" || true
+          
+      - name: Select Xcode 27
+        run: sudo xcode-select -s /Applications/Xcode_27.0.app/Contents/Developer
+        
       - name: Build for Simulator
-        run: xcodebuild build -project storytime.xcodeproj -scheme storytime -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO
-      - name: Upload Artifact
+        run: |
+          xcodebuild build \
+            -project storytime.xcodeproj \
+            -scheme storytime \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+            
+      - name: Upload to Appetize Link
         uses: actions/upload-artifact@v4
         with:
           name: storytime-simulator
