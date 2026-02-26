@@ -61,9 +61,8 @@ final class SpouseInviteService: ObservableObject {
     // MARK: - Initialization
 
     private init() {
-        Task {
-            await setupFamilyZone()
-        }
+        // Zone setup is deferred to first use (createSpouseInvitation) to avoid
+        // crashing when the CloudKit container isn't yet provisioned in the portal.
     }
 
     // MARK: - Zone Setup
