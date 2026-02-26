@@ -16,6 +16,7 @@ struct PlayerView: View {
     @State private var audioLevel: Float = 0.0
     @State private var progress: Double = 0.0
     @State private var showControls = true
+    @State private var isFinished = false
 
     // MARK: - Timers
 
@@ -58,6 +59,19 @@ struct PlayerView: View {
                 // Play/Pause control
                 playPauseButton
                     .padding(.bottom, 60)
+            }
+            // Fade player controls out as the finish view blooms in
+            .opacity(isFinished ? 0 : 1)
+            .animation(.easeInOut(duration: 0.3), value: isFinished)
+
+            // Story finish celebration — appears over the dreamscape background
+            if isFinished {
+                StoryFinishView(
+                    book: book,
+                    onReadAgain: restartPlayback,
+                    onFinish: onDismiss
+                )
+                .zIndex(2)
             }
         }
         .statusBarHidden()
@@ -160,6 +174,9 @@ struct PlayerView: View {
                 progress += 0.1 / storyDuration
             } else {
                 stopPlayback()
+                withAnimation(.easeInOut(duration: 0.6)) {
+                    isFinished = true
+                }
             }
         }
 
@@ -181,6 +198,18 @@ struct PlayerView: View {
 
         withAnimation(.easeOut(duration: 0.3)) {
             audioLevel = 0
+        }
+    }
+
+    private func restartPlayback() {
+        progress = 0
+        audioLevel = 0
+        withAnimation(.easeInOut(duration: 0.4)) {
+            isFinished = false
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            isPlaying = true
+            startPlayback()
         }
     }
 
