@@ -20,22 +20,23 @@ jobs:
         run: gem install xcpretty --no-document --quiet
 
       - name: Build (iOS Simulator)
+        working-directory: StoryTime
         run: |
           set -o pipefail
           xcodebuild \
-            -project StoryTime/storytime.xcodeproj \
+            -project storytime.xcodeproj \
             -scheme storytime \
-            -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
             -derivedDataPath build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="" \
-            build \
+            clean build \
           | xcpretty --color
 
       - name: Zip .app for Appetize
+        working-directory: StoryTime
         run: |
           cd build/Build/Products/Debug-iphonesimulator
           zip -r ../../../../storytime-simulator.zip storytime.app
