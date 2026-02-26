@@ -1,0 +1,49 @@
+name: Build for Appetize
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Simulator Build
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install xcpretty
+        run: gem install xcpretty --no-document --quiet
+
+      - name: Build (iOS Simulator)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project storytime.xcodeproj \
+            -scheme storytime \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            build \
+          | xcpretty --color
+
+      - name: Zip .app for Appetize
+        run: |
+          cd build/Build/Products/Debug-iphonesimulator
+          zip -r ../../../../storytime-simulator.zip storytime.app
+          echo "Archive size: $(du -sh ../../../../storytime-simulator.zip | cut -f1)"
+
+      - name: Upload simulator build
+        uses: actions/upload-artifact@v4
+        with:
+          name: storytime-simulator
+          path: storytime-simulator.zip
+          retention-days: 30

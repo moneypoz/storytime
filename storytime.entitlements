@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- CloudKit — required by SpouseInviteService. Add iCloud + CloudKit capabilities in Xcode before enabling. -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.storytime.app</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
+	<!-- In-App Purchases — required by StoreKitService. Add In-App Purchase capability in Xcode before enabling. -->
+	<key>com.apple.developer.in-app-payments</key>
+	<array/>
+</dict>
+</plist>
