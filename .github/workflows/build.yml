@@ -25,16 +25,20 @@ jobs:
       - name: List available simulators
         run: xcrun simctl list devices
 
+      - name: List project schemes and targets
+        run: xcodebuild -list -project storytime.xcodeproj
+
       - name: Build (iOS Simulator)
         run: |
           set -o pipefail
           xcodebuild \
             -project storytime.xcodeproj \
             -scheme storytime \
+            -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
             -derivedDataPath build \
+            build \
             CODE_SIGNING_ALLOWED=NO \
-            clean build \
           | xcpretty --color
 
       - name: Zip .app for Appetize
