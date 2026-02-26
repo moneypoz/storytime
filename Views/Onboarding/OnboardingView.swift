@@ -97,7 +97,7 @@ struct OnboardingView: View {
         let section = sections[index]
 
         VStack(spacing: 20) {
-            // Script card (always shown as active since it owns the page)
+            // Script card — pinned so it never compresses during recording
             ScriptSectionView(
                 section: section,
                 isActive: true,
@@ -105,8 +105,9 @@ struct OnboardingView: View {
                 completion: progressTracker.sectionCompletions[section.mood] ?? 0
             )
             .padding(.horizontal, 24)
+            .fixedSize(horizontal: false, vertical: true)
 
-            // Record orb
+            // Record orb — fixed frame so audio-level ring growth never shifts layout
             GlowingOrbButton(
                 audioLevel: audioManager.audioLevel,
                 isRecording: audioManager.isRecording && currentPage == index,
@@ -115,20 +116,24 @@ struct OnboardingView: View {
             ) {
                 handleOrbTap(for: index)
             }
+            .frame(height: 220)
 
-            // Mood direction
-            Text(section.mood.direction)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.6))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-
-            // Inline status (only when relevant to this page)
-            if audioManager.isRecording && currentPage == index {
-                recordingIndicator(for: section)
-            } else if voiceTokenizer.isProcessing && index == sections.count - 1 {
-                processingIndicator
+            // Fixed-height slot: direction text ↔ recording/processing status.
+            // Swapping content here instead of adding it keeps the layout stable.
+            Group {
+                if audioManager.isRecording && currentPage == index {
+                    recordingIndicator(for: section)
+                } else if voiceTokenizer.isProcessing && index == sections.count - 1 {
+                    processingIndicator
+                } else {
+                    Text(section.mood.direction)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
             }
+            .frame(height: 60, alignment: .top)
 
             Spacer()
         }
