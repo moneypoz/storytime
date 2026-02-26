@@ -6,20 +6,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Xcode version
-        run: |
-          xcode-select -p
-          xcodebuild -version
-
       - name: Pre-boot Simulator
-        run: xcrun simctl boot "iPhone 16" || true
+        run: xcrun simctl boot "0590F9FF-4A60-4F22-A8ED-F88F08630BF3" || true
 
       - name: Build for Simulator
         run: |
           xcodebuild build \
             -project storytime.xcodeproj \
             -scheme storytime \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,id=0590F9FF-4A60-4F22-A8ED-F88F08630BF3' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO
