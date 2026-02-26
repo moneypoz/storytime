@@ -212,15 +212,21 @@ struct LibraryView: View {
     // MARK: - Settings Gear Button
 
     private var settingsGearButton: some View {
-        Image(systemName: "gearshape.fill")
-            .font(.system(size: 22, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.6))
-            .padding(12)
-            .background(.ultraThinMaterial, in: Circle())
-            .onLongPressGesture(minimumDuration: 0.4) {
-                longPressHaptic.impactOccurred()
-                showingDashboard = true
-            }
+        VStack(spacing: 4) {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.6))
+                .padding(12)
+                .background(.ultraThinMaterial, in: Circle())
+
+            Text("Hold for settings")
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.35))
+        }
+        .onLongPressGesture(minimumDuration: 0.4) {
+            longPressHaptic.impactOccurred()
+            showingDashboard = true
+        }
     }
 
     // MARK: - Book Carousel (Horizontal Paging)
