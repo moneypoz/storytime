@@ -85,11 +85,11 @@ struct OnboardingView: View {
                     .padding(.bottom, 24)
 
                 // Script sections
-                scriptSections
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 32)
-
-                Spacer()
+                ScrollView(showsIndicators: false) {
+                    scriptSections
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 16)
+                }
 
                 // Glowing Orb Button (color changes with mood)
                 GlowingOrbButton(
