@@ -449,10 +449,11 @@ struct StoryProgressRing: View {
                 .stroke(
                     AngularGradient(
                         colors: [
-                            Color(hex: "6366f1"),
-                            Color(hex: "8B5CF6"),
-                            Color(hex: "A78BFA"),
-                            Color(hex: "6366f1")
+                            Color(hex: "A8A8A8"),
+                            Color(hex: "E8E8E8"),
+                            Color(hex: "F5F5F5"),
+                            Color(hex: "D4D4D4"),
+                            Color(hex: "A8A8A8")
                         ],
                         center: .center
                     ),
@@ -460,7 +461,7 @@ struct StoryProgressRing: View {
                 )
                 .frame(width: 120, height: 120)
                 .rotationEffect(.degrees(-90))
-                .shadow(color: Color(hex: "6366f1").opacity(0.5), radius: 8)
+                .shadow(color: Color(hex: "D4D4D4").opacity(0.5), radius: 8)
 
             // Center content
             VStack(spacing: 2) {

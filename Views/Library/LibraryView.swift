@@ -26,7 +26,7 @@ struct LibraryView: View {
     // MARK: - Haptics
 
     private let hapticGenerator = UIImpactFeedbackGenerator(style: .soft)
-    private let longPressHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private let longPressHaptic = UIImpactFeedbackGenerator(style: .heavy)
 
     // MARK: - Properties
 
