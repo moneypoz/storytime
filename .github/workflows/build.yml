@@ -6,11 +6,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Xcode version
+        run: |
+          xcode-select -p
+          xcodebuild -version
+
       - name: Pre-boot Simulator
         run: xcrun simctl boot "iPhone 16" || true
-
-      - name: Select Xcode 27
-        run: sudo xcode-select -s /Applications/Xcode_27.0.app/Contents/Developer
 
       - name: Build for Simulator
         run: |
