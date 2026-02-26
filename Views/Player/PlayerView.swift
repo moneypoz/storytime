@@ -164,7 +164,7 @@ struct PlayerView: View {
                 Circle()
                     .fill(.clear)
                     .frame(width: 80, height: 80)
-                    .glassEffect(.clear.interactive(), in: .circle)
+                    .glassEffect(.regular.interactive(), in: .circle)
 
                 // Icon
                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
