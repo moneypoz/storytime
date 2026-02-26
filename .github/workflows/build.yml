@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: Simulator Build
-    runs-on: macos-latest
+    runs-on: macos-26
 
     steps:
       - name: Checkout
@@ -31,7 +31,7 @@ jobs:
           xcodebuild \
             -project storytime.xcodeproj \
             -scheme storytime \
-            -destination 'platform=iOS Simulator,name=Any iOS Simulator Device' \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             clean build \
