@@ -194,7 +194,7 @@ struct StoryFinishView: View {
             let transform = CGAffineTransform(translationX: x, y: y).rotated(by: angle)
             var ctx = context
             ctx.opacity = opacity
-            ctx.transform(transform)
+            ctx.concatenate(transform)
 
             // Body (circle or rounded rect)
             let bodyRect = CGRect(x: -w / 2, y: -h / 2, width: w, height: h)
