@@ -20,7 +20,6 @@ jobs:
         run: gem install xcpretty --no-document --quiet
 
       - name: Build (iOS Simulator)
-        working-directory: StoryTime
         run: |
           set -o pipefail
           xcodebuild \
@@ -36,7 +35,6 @@ jobs:
           | xcpretty --color
 
       - name: Zip .app for Appetize
-        working-directory: StoryTime
         run: |
           cd build/Build/Products/Debug-iphonesimulator
           zip -r ../../../../storytime-simulator.zip storytime.app
