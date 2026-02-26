@@ -462,6 +462,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = StoryTime;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "StoryTime needs microphone access to record your voice for personalizing bedtime stories.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "StoryTime uses speech recognition to track your progress while reading aloud during voice setup.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -493,6 +494,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = StoryTime;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "StoryTime needs microphone access to record your voice for personalizing bedtime stories.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "StoryTime uses speech recognition to track your progress while reading aloud during voice setup.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
