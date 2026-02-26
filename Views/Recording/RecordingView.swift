@@ -19,6 +19,7 @@ struct RecordingView: View {
     @State private var displayLevel: CGFloat = 0.0
     @State private var hasStarted = false
     @State private var isComplete = false
+    @State private var showLibrary = false
     @State private var progressTimer: Timer?
 
     private let sessionDuration: Double = 30.0
@@ -50,6 +51,12 @@ struct RecordingView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle("")
+        .fullScreenCover(isPresented: $showLibrary) {
+            LibraryView()
+        }
+        .onChange(of: showLibrary) { _, isShowing in
+            if isShowing { appState.completeOnboarding() }
+        }
     }
 
     // MARK: - Background
@@ -74,9 +81,9 @@ struct RecordingView: View {
             metallicProgressBar
 
             ScrollView {
-                VStack(spacing: 44) {
+                VStack(spacing: 24) {
                     header
-                        .padding(.top, 40)
+                        .padding(.top, 24)
 
                     voiceSphere
 
@@ -159,12 +166,12 @@ struct RecordingView: View {
             TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !audioManager.isRecording)) { _ in
                 Canvas { context, size in
                     let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                    let baseRadius: CGFloat = 76
+                    let baseRadius: CGFloat = 58
                     let level = displayLevel
 
                     // Four concentric rings — each expands proportionally with level
                     for i in 0..<4 {
-                        let radius = baseRadius + CGFloat(i) * 16 + level * 42
+                        let radius = baseRadius + CGFloat(i) * 12 + level * 32
                         let opacity = Double(4 - i) / 4.0 * (audioManager.isRecording ? 0.38 : 0.07)
                         var ring = Path()
                         ring.addArc(
@@ -178,7 +185,7 @@ struct RecordingView: View {
                     }
 
                     // Soft filled glow that breathes with the voice
-                    let glowRadius = baseRadius - 6 + level * 16
+                    let glowRadius = baseRadius - 4 + level * 12
                     var glow = Path()
                     glow.addArc(
                         center: center,
@@ -190,7 +197,7 @@ struct RecordingView: View {
                     context.fill(glow, with: .color(.white.opacity(0.04 + Double(level) * 0.13)))
                 }
             }
-            .frame(width: 230, height: 230)
+            .frame(width: 180, height: 180)
             .allowsHitTesting(false)
 
             // Liquid Glass orb — tap target
@@ -198,11 +205,11 @@ struct RecordingView: View {
                 ZStack {
                     Circle()
                         .fill(.clear)
-                        .frame(width: 144, height: 144)
+                        .frame(width: 116, height: 116)
                         .glassEffect(.regular.interactive(), in: Circle())
 
                     Image(systemName: audioManager.isRecording ? "waveform" : "mic.fill")
-                        .font(.system(size: 42, weight: .light))
+                        .font(.system(size: 34, weight: .light))
                         .foregroundStyle(.white.opacity(0.85))
                         .symbolEffect(.pulse, isActive: audioManager.isRecording)
                         .contentTransition(.symbolEffect(.replace))
@@ -310,7 +317,7 @@ struct RecordingView: View {
             // Enter Library — enabled only after SecureStorageService confirms the write.
             // Prevents navigation before the voice profile is durably stored.
             Button {
-                appState.completeOnboarding()
+                showLibrary = true
             } label: {
                 Text("Enter the Library")
                     .font(.system(.title3, design: .rounded, weight: .semibold))
