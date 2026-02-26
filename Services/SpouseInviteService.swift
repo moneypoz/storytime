@@ -20,7 +20,7 @@ final class SpouseInviteService: ObservableObject {
 
     // MARK: - Constants
 
-    private let container = CKContainer(identifier: "iCloud.com.storytime.app")
+    private lazy var container = CKContainer(identifier: "iCloud.com.storytime.app")
     private let familyZoneName = "FamilyZone"
 
     // MARK: - Zone IDs

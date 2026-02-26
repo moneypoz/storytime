@@ -56,7 +56,6 @@ struct ParentDashboardView: View {
             }
         }
         .spouseInviteSheet(isPresented: $showingSpouseInvite)
-        .task { await loadLiveParticipants() }
         .sheet(isPresented: $showingPaywall) {
             PaywallBottomSheet(selectedBook: nil)
                 .presentationDetents([.large])
