@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Parent voice recording onboarding screen with 30-second expressive script
-/// Tracks progress through three mood sections: Excited, Normal, Sleepy
+/// Parent voice recording onboarding — paging TabView, one script section per page.
+/// The Next button unlocks after the Record orb has been pressed on each page.
 struct OnboardingView: View {
 
     // MARK: - Environment
@@ -17,21 +17,23 @@ struct OnboardingView: View {
 
     // MARK: - State
 
+    @State private var currentPage = 0
+    @State private var hasRecordedPage: Set<Int> = []
     @State private var showingPermissionAlert = false
     @State private var processingComplete = false
     @State private var showSuccessView = false
     @State private var showLibrary = false
+
+    private let sections = ExpressiveScript.sections
 
     // MARK: - Body
 
     var body: some View {
         ZStack {
             if showSuccessView {
-                // Success view with magic pulse animation
                 SuccessView(showLibrary: $showLibrary)
                     .transition(.opacity)
             } else {
-                // Main onboarding content
                 onboardingContent
             }
         }
@@ -51,19 +53,10 @@ struct OnboardingView: View {
             Text("StoryTime needs microphone and speech recognition access to capture your voice..")
         }
         .onChange(of: speechRecognizer.recognizedWords) { _, _ in
-            // Update progress when new words are recognized
             progressTracker.updateProgress(from: speechRecognizer)
         }
-        .onChange(of: progressTracker.isComplete) { _, isComplete in
-            if isComplete {
-                completeOnboarding()
-            }
-        }
         .onChange(of: showLibrary) { _, isShowing in
-            if isShowing {
-                // Mark onboarding as complete when transitioning to library
-                appState.completeOnboarding()
-            }
+            if isShowing { appState.completeOnboarding() }
         }
     }
 
@@ -71,70 +64,138 @@ struct OnboardingView: View {
 
     private var onboardingContent: some View {
         ZStack {
-            // Background
-            backgroundGradient
-                .ignoresSafeArea()
-
-            // Floating stars decoration
+            backgroundGradient.ignoresSafeArea()
             StarsBackground()
 
             VStack(spacing: 0) {
-                // Header
                 headerSection
                     .padding(.top, 50)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 16)
 
-                // Script sections
-                ScrollView(showsIndicators: false) {
-                    scriptSections
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 16)
+                // Paging carousel — one section per page
+                TabView(selection: $currentPage) {
+                    ForEach(sections.indices, id: \.self) { index in
+                        scriptPage(for: index)
+                            .tag(index)
+                    }
                 }
+                .tabViewStyle(.page(indexDisplayMode: .always))
 
-                // Glowing Orb Button (color changes with mood)
-                GlowingOrbButton(
-                    audioLevel: audioManager.audioLevel,
-                    isRecording: audioManager.isRecording,
-                    moodColor: currentMood.orbColor,
-                    glowColor: currentMood.glowColor
-                ) {
-                    handleOrbTap()
-                }
-
-                // Current mood indicator
-                moodIndicator
-                    .padding(.top, 16)
-
-                Spacer()
-
-                // Status section
-                statusSection
-                    .padding(.bottom, 30)
+                // Next / Done button — fixed below the carousel
+                nextButton
+                    .padding(.horizontal, 40)
+                    .padding(.top, 8)
+                    .padding(.bottom, 48)
             }
         }
     }
 
-    // MARK: - Current Mood
+    // MARK: - Script Page
 
-    private var currentMood: ExpressiveScript.Mood {
-        progressTracker.currentMood
+    @ViewBuilder
+    private func scriptPage(for index: Int) -> some View {
+        let section = sections[index]
+
+        VStack(spacing: 20) {
+            // Script card (always shown as active since it owns the page)
+            ScriptSectionView(
+                section: section,
+                isActive: true,
+                isComplete: progressTracker.sectionCompletions[section.mood] ?? 0 >= 1.0,
+                completion: progressTracker.sectionCompletions[section.mood] ?? 0
+            )
+            .padding(.horizontal, 24)
+
+            // Record orb
+            GlowingOrbButton(
+                audioLevel: audioManager.audioLevel,
+                isRecording: audioManager.isRecording && currentPage == index,
+                moodColor: section.mood.orbColor,
+                glowColor: section.mood.glowColor
+            ) {
+                handleOrbTap(for: index)
+            }
+
+            // Mood direction
+            Text(section.mood.direction)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+
+            // Inline status (only when relevant to this page)
+            if audioManager.isRecording && currentPage == index {
+                recordingIndicator(for: section)
+            } else if voiceTokenizer.isProcessing && index == sections.count - 1 {
+                processingIndicator
+            }
+
+            Spacer()
+        }
+        .padding(.top, 8)
     }
 
-    // MARK: - Background
+    // MARK: - Next / Done Button
 
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: [
-                Color(hex: "020617"),
-                Color(hex: "1e1b4b").opacity(0.6),
-                Color(hex: "020617")
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+    private var nextButton: some View {
+        let isLast = currentPage == sections.count - 1
+        let canAdvance = hasRecordedPage.contains(currentPage)
+        let section = sections[currentPage]
+
+        return Button {
+            advancePage(isLast: isLast)
+        } label: {
+            HStack(spacing: 10) {
+                Text(isLast ? "Done" : "Next")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                if !isLast {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+            }
+            .foregroundStyle(canAdvance ? .white : .white.opacity(0.35))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                Capsule()
+                    .fill(canAdvance
+                        ? AnyShapeStyle(LinearGradient(
+                            colors: [section.mood.orbColor, section.mood.glowColor],
+                            startPoint: .leading,
+                            endPoint: .trailing))
+                        : AnyShapeStyle(Color.white.opacity(0.1)))
+            )
+        }
+        .disabled(!canAdvance)
+        .buttonStyle(ScaleButtonStyle())
+        .animation(.easeInOut(duration: 0.25), value: canAdvance)
     }
 
-    // MARK: - Header Section
+    // MARK: - Status Indicators
+
+    private func recordingIndicator(for section: ExpressiveScript.Section) -> some View {
+        VStack(spacing: 8) {
+            ProgressView(value: progressTracker.sectionCompletions[section.mood] ?? 0)
+                .tint(section.mood.orbColor)
+                .padding(.horizontal, 60)
+
+            Text("Recording…")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.65))
+        }
+    }
+
+    private var processingIndicator: some View {
+        VStack(spacing: 8) {
+            ProgressView()
+                .tint(sections.last?.mood.orbColor ?? .white)
+            Text("Creating your voice profile…")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.white.opacity(0.65))
+        }
+    }
+
+    // MARK: - Header / Background
 
     private var headerSection: some View {
         VStack(spacing: 12) {
@@ -150,148 +211,51 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Script Sections
-
-    private var scriptSections: some View {
-        VStack(spacing: 20) {
-            ForEach(ExpressiveScript.sections) { section in
-                ScriptSectionView(
-                    section: section,
-                    isActive: progressTracker.currentMood == section.mood,
-                    isComplete: progressTracker.sectionCompletions[section.mood] ?? 0 >= 1.0,
-                    completion: progressTracker.sectionCompletions[section.mood] ?? 0
-                )
-            }
-        }
-    }
-
-    // MARK: - Mood Indicator
-
-    private var moodIndicator: some View {
-        HStack(spacing: 8) {
-            Text(currentMood.emoji)
-                .font(.system(size: 20))
-
-            Text(currentMood.direction)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: Capsule())
-        .animation(.spring(duration: 0.4), value: currentMood)
-    }
-
-    // MARK: - Status Section
-
-    private var statusSection: some View {
-        Group {
-            if voiceTokenizer.isProcessing {
-                processingView
-            } else if audioManager.isRecording {
-                recordingProgressView
-            } else if processingComplete {
-                completedView
-            } else {
-                instructionText
-            }
-        }
-        .animation(.easeInOut(duration: 0.3), value: audioManager.isRecording)
-        .animation(.easeInOut(duration: 0.3), value: voiceTokenizer.isProcessing)
-    }
-
-    private var instructionText: some View {
-        Text("Tap the orb to begin recording")
-            .font(.system(size: 14, weight: .medium, design: .rounded))
-            .foregroundStyle(.white.opacity(0.5))
-    }
-
-    private var recordingProgressView: some View {
-        VStack(spacing: 12) {
-            // Overall progress bar
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(.white.opacity(0.2))
-                        .frame(height: 6)
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    ExpressiveScript.Mood.excited.orbColor,
-                                    ExpressiveScript.Mood.normal.orbColor,
-                                    ExpressiveScript.Mood.sleepy.orbColor
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: geometry.size.width * progressTracker.overallProgress, height: 6)
-                }
-            }
-            .frame(height: 6)
-            .padding(.horizontal, 60)
-
-            Text("Recording... \(Int(progressTracker.overallProgress * 100))% complete")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
-        }
-    }
-
-    private var processingView: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-                .tint(currentMood.orbColor)
-
-            Text("Creating your voice profile...")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
-
-            Text("Your voice stays on this device")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(DesignSystem.moonGlow.opacity(0.5))
-        }
-    }
-
-    private var completedView: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-
-            Text("Voice profile created")
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.8))
-        }
+    private var backgroundGradient: some View {
+        LinearGradient(
+            colors: [
+                Color(hex: "020617"),
+                Color(hex: "1e1b4b").opacity(0.6),
+                Color(hex: "020617")
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     // MARK: - Actions
 
-    private func handleOrbTap() {
+    private func handleOrbTap(for pageIndex: Int) {
         if audioManager.isRecording {
-            // Stop recording
             audioManager.stopRecording()
             speechRecognizer.stopListening()
-
-            if progressTracker.isComplete, let audioURL = audioManager.recordedAudioURL {
-                Task {
-                    try await voiceTokenizer.tokenize(audioURL: audioURL)
-                }
-            }
         } else {
-            // Start recording
-            Task {
-                await checkPermissionsAndStart()
+            // Mark this page as recorded — unlocks the Next button
+            hasRecordedPage.insert(pageIndex)
+            Task { await checkPermissionsAndStart(for: pageIndex) }
+        }
+    }
+
+    private func advancePage(isLast: Bool) {
+        if audioManager.isRecording {
+            audioManager.stopRecording()
+            speechRecognizer.stopListening()
+        }
+        if isLast {
+            completeOnboarding()
+        } else {
+            withAnimation {
+                currentPage += 1
             }
         }
     }
 
-    private func checkPermissionsAndStart() async {
+    private func checkPermissionsAndStart(for pageIndex: Int) async {
         await audioManager.checkPermission()
         await speechRecognizer.checkPermissions()
 
         if audioManager.hasPermission && speechRecognizer.hasPermission {
-            progressTracker.reset()
+            progressTracker.currentMoodIndex = pageIndex
             audioManager.startRecording()
             speechRecognizer.startListening()
         } else {
@@ -300,27 +264,22 @@ struct OnboardingView: View {
     }
 
     private func completeOnboarding() {
-        // Stop recording
         audioManager.stopRecording()
         speechRecognizer.stopListening()
 
-        // Process the voice
         if let audioURL = audioManager.recordedAudioURL {
             Task {
-                try await voiceTokenizer.tokenize(audioURL: audioURL)
+                try? await voiceTokenizer.tokenize(audioURL: audioURL)
                 processingComplete = true
-
-                // Show success view with magic pulse animation
-                withAnimation(.easeInOut(duration: 0.5)) {
-                    showSuccessView = true
-                }
-                // SuccessView handles the 2-second delay and sets showLibrary = true
+                withAnimation(.easeInOut(duration: 0.5)) { showSuccessView = true }
             }
+        } else {
+            withAnimation(.easeInOut(duration: 0.5)) { showSuccessView = true }
         }
     }
 }
 
-// MARK: - Script Section View
+// MARK: - Script Section View (unchanged)
 
 struct ScriptSectionView: View {
     let section: ExpressiveScript.Section
@@ -346,7 +305,6 @@ struct ScriptSectionView: View {
                         .foregroundStyle(.green)
                         .font(.system(size: 16))
                 } else if isActive {
-                    // Progress indicator
                     Circle()
                         .trim(from: 0, to: completion)
                         .stroke(section.mood.orbColor, lineWidth: 2)
@@ -369,60 +327,42 @@ struct ScriptSectionView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(borderColor, lineWidth: isActive ? 2 : 1)
         )
-        .scaleEffect(isActive ? 1.02 : 1.0)
         .animation(.spring(duration: 0.3), value: isActive)
         .animation(.easeInOut(duration: 0.3), value: isComplete)
     }
 
     private var headerColor: Color {
-        if isComplete {
-            return .white
-        } else if isActive {
-            return section.mood.orbColor
-        } else {
-            return .white.opacity(0.4)
-        }
+        if isComplete { return .white }
+        if isActive   { return section.mood.orbColor }
+        return .white.opacity(0.4)
     }
 
     private var textColor: Color {
-        if isComplete {
-            return .white.opacity(0.9)
-        } else if isActive {
-            return .white.opacity(0.8)
-        } else {
-            return .white.opacity(0.35)
-        }
+        if isComplete { return .white.opacity(0.9) }
+        if isActive   { return .white.opacity(0.8) }
+        return .white.opacity(0.35)
     }
 
     private var cardBackground: some ShapeStyle {
         if isActive {
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [
-                        section.mood.orbColor.opacity(0.15),
-                        section.mood.orbColor.opacity(0.05)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            return AnyShapeStyle(LinearGradient(
+                colors: [section.mood.orbColor.opacity(0.15), section.mood.orbColor.opacity(0.05)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ))
         } else {
             return AnyShapeStyle(Color.white.opacity(0.03))
         }
     }
 
     private var borderColor: Color {
-        if isComplete {
-            return .green.opacity(0.5)
-        } else if isActive {
-            return section.mood.orbColor.opacity(0.6)
-        } else {
-            return .white.opacity(0.1)
-        }
+        if isComplete { return .green.opacity(0.5) }
+        if isActive   { return section.mood.orbColor.opacity(0.6) }
+        return .white.opacity(0.1)
     }
 }
 
-// MARK: - Stars Background
+// MARK: - Stars Background (unchanged)
 
 struct StarsBackground: View {
     @State private var opacity: Double = 0.3
