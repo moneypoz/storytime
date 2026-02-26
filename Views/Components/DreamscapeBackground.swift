@@ -4,6 +4,10 @@ import SwiftUI
 /// Creates a dreamy, ethereal atmosphere for the player
 struct DreamscapeBackground: View {
 
+    // MARK: - Properties
+
+    var atmosphereOpacity: Double = 1.0
+
     // MARK: - State
 
     @State private var blobs: [DreamBlob] = DreamBlob.generate(count: 6)
@@ -25,14 +29,17 @@ struct DreamscapeBackground: View {
                     endPoint: .bottomTrailing
                 )
 
-                // Animated blobs
-                ForEach(blobs) { blob in
-                    BlobView(
-                        blob: blob,
-                        phase: animationPhase,
-                        bounds: geometry.size
-                    )
+                // Animated blobs (opacity driven by segment mood)
+                Group {
+                    ForEach(blobs) { blob in
+                        BlobView(
+                            blob: blob,
+                            phase: animationPhase,
+                            bounds: geometry.size
+                        )
+                    }
                 }
+                .opacity(atmosphereOpacity)
             }
         }
         .ignoresSafeArea()

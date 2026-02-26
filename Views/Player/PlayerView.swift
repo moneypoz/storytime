@@ -18,6 +18,11 @@ struct PlayerView: View {
     @State private var showControls = true
     @State private var isFinished = false
 
+    // MARK: - Atmosphere
+
+    @State private var glowVibrancy: AIGlowVibrancy = .standard
+    @State private var atmosphereOpacity: Double = 1.0
+
     // MARK: - Timers
 
     @State private var playbackTimer: Timer?
@@ -27,12 +32,24 @@ struct PlayerView: View {
 
     private let storyDuration: Double = 180 // 3 minutes
 
+    // MARK: - Segment Tracking
+
+    private var currentSegmentIndex: Int {
+        guard let count = book.script?.segments.count, count > 0 else { return 0 }
+        return min(Int(progress * Double(count)), count - 1)
+    }
+
+    private var currentMood: StoryScript.Segment.Mood? {
+        guard let segments = book.script?.segments else { return nil }
+        return segments[currentSegmentIndex].mood
+    }
+
     // MARK: - Body
 
     var body: some View {
         ZStack {
             // Dreamscape background
-            DreamscapeBackground()
+            DreamscapeBackground(atmosphereOpacity: atmosphereOpacity)
 
             // Content
             VStack(spacing: 0) {
@@ -51,6 +68,10 @@ struct PlayerView: View {
                     audioLevel: audioLevel,
                     progress: progress,
                     accentColor: book.coverGradient.first ?? DesignSystem.primaryPurple
+                )
+                .aiGlowBackground(
+                    vibrancy: glowVibrancy,
+                    color: book.coverGradient.first ?? DesignSystem.primaryPurple
                 )
                 .matchedGeometryEffect(id: book.id, in: namespace)
 
@@ -73,6 +94,9 @@ struct PlayerView: View {
                 )
                 .zIndex(2)
             }
+        }
+        .onChange(of: currentSegmentIndex) {
+            updateAtmosphere()
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
@@ -210,6 +234,22 @@ struct PlayerView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             isPlaying = true
             startPlayback()
+        }
+    }
+
+    private func updateAtmosphere() {
+        withAnimation(.easeInOut(duration: 1.5)) {
+            switch currentMood {
+            case .excited:
+                glowVibrancy = .vivid
+                atmosphereOpacity = 1.0
+            case .sleepy:
+                glowVibrancy = .subtle
+                atmosphereOpacity = 0.2
+            case .normal, .none:
+                glowVibrancy = .standard
+                atmosphereOpacity = 1.0
+            }
         }
     }
 

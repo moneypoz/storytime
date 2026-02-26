@@ -1,0 +1,40 @@
+{
+  "title": "The Lion and the Mouse",
+  "engine": "sarah-expressive",
+  "version": 1,
+  "scenes": [
+    {
+      "id": 1,
+      "character": "Narrator",
+      "mood": "normal",
+      "voice": {
+        "rate": 0.75,
+        "pitch": 1.0,
+        "volume": 1.0
+      },
+      "text": "A great Lion lay asleep in the sun..."
+    },
+    {
+      "id": 2,
+      "character": "Lion",
+      "mood": "excited",
+      "voice": {
+        "rate": 0.85,
+        "pitch": 1.15,
+        "volume": 1.2
+      },
+      "text": "How dare you wake me! I shall eat you!"
+    },
+    {
+      "id": 3,
+      "character": "Mouse",
+      "mood": "soft",
+      "voice": {
+        "rate": 0.65,
+        "pitch": 1.25,
+        "volume": 0.7
+      },
+      "text": "Please, King of the Jungle! Spare me, and one day I might help you."
+    }
+  ]
+}
