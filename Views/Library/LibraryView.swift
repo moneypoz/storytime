@@ -235,22 +235,16 @@ struct LibraryView: View {
                     )
                     .containerRelativeFrame(.horizontal)
                     .scrollTransition(.animated(.spring(duration: 0.4, bounce: 0.15))) { content, phase in
-                        content
-                            // Scale: 1.1x when centered, 0.85x when off-center
-                            .scaleEffect(phase.isIdentity ? 1.1 : 0.85)
-                            // Opacity: Full when centered, 55% when off-center
-                            .opacity(phase.isIdentity ? 1.0 : 0.55)
-                            // Soft white glow when centered
-                            .shadow(
-                                color: .white.opacity(phase.isIdentity ? 0.25 : 0),
-                                radius: phase.isIdentity ? 30 : 0
-                            )
-                            // Subtle rotation for depth
-                            .rotation3DEffect(
-                                .degrees(phase.value * -8),
-                                axis: (x: 0, y: 1, z: 0),
-                                perspective: 0.5
-                            )
+                        let scale: CGFloat = phase.isIdentity ? 1.1 : 0.85
+                        let opacity: Double = phase.isIdentity ? 1.0 : 0.55
+                        let shadowOpacity: Double = phase.isIdentity ? 0.25 : 0
+                        let shadowRadius: CGFloat = phase.isIdentity ? 30 : 0
+                        let rotation: Double = phase.value * -8
+                        return content
+                            .scaleEffect(scale)
+                            .opacity(opacity)
+                            .shadow(color: .white.opacity(shadowOpacity), radius: shadowRadius)
+                            .rotation3DEffect(.degrees(rotation), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
                     }
                     .matchedGeometryEffect(
                         id: book.id,

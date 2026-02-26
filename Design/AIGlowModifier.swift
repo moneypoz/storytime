@@ -51,27 +51,16 @@ struct AIGlowModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         ZStack {
-            // Layered blurred strokes for glow effect
+            // Layered blurred glow copies
             ForEach(Array(vibrancy.blurLayers.enumerated()), id: \.offset) { index, layer in
                 content
-                    .stroke(
-                        glowGradient,
-                        lineWidth: vibrancy.strokeWidth + CGFloat(index) * 1.5
-                    )
+                    .foregroundStyle(glowGradient)
                     .blur(radius: layer.radius)
                     .opacity(layer.opacity * (animated ? pulseOpacity(for: index) : 1.0))
             }
 
-            // Core stroke
+            // Core content on top
             content
-                .stroke(
-                    LinearGradient(
-                        colors: [.white.opacity(0.9), color.opacity(0.8), .white.opacity(0.6)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: vibrancy.strokeWidth
-                )
         }
         .onAppear {
             if animated {
