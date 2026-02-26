@@ -321,9 +321,9 @@ struct RecordingView: View {
                     .glassEffect(.regular.interactive(), in: Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(!secureStorage.hasVoiceProfile)
-            .opacity(secureStorage.hasVoiceProfile ? 1.0 : 0.35)
-            .animation(.easeInOut(duration: 0.4), value: secureStorage.hasVoiceProfile)
+            .disabled(!isComplete)
+            .opacity(isComplete ? 1.0 : 0.35)
+            .animation(.easeInOut(duration: 0.4), value: isComplete)
 
             Spacer()
         }

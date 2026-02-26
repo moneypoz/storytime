@@ -10,7 +10,7 @@ struct StoryTimeApp: App {
                 if appState.hasCompletedOnboarding {
                     HomeView()
                 } else {
-                    OnboardingView()
+                    WelcomeView()
                 }
             }
             .environmentObject(appState)
