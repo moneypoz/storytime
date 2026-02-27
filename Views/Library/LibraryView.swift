@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import VoiceboxCore
 
 /// Horizontal paging library with Liquid Glass cards
 /// Background: MeshGradient with Midnight (#020617) and Deep Indigo (#1e1b4b)
@@ -21,7 +22,8 @@ struct LibraryView: View {
 
     // MARK: - Services
 
-    @StateObject private var storeKit = StoreKitService.shared
+    @StateObject private var storeKit   = StoreKitService.shared
+    @StateObject private var familySync = FamilySyncManager.shared
 
     // MARK: - Haptics
 
@@ -85,6 +87,7 @@ struct LibraryView: View {
         .onChange(of: scrolledBookID) { oldValue, newValue in
             guard oldValue != nil, newValue != nil else { return }
             hapticGenerator.impactOccurred()
+            prefetchFirstSegment(for: newValue)
         }
     }
 
@@ -229,17 +232,17 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Book Carousel (Horizontal Paging)
+    // MARK: - Book Carousel
 
     private var bookCarousel: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: cardSpacing) {
+            LazyHStack(spacing: 20) {
                 ForEach(books) { book in
                     LiquidGlassCard(
                         book: book,
-                        isActive: book.id == scrolledBookID
+                        isActive: book.id == scrolledBookID,
+                        voiceName: familySync.activeVoiceName
                     )
-                    .containerRelativeFrame(.horizontal)
                     .scrollTransition(.animated(.spring(duration: 0.4, bounce: 0.15))) { content, phase in
                         let scale: CGFloat = phase.isIdentity ? 1.1 : 0.85
                         let opacity: Double = phase.isIdentity ? 1.0 : 0.55
@@ -264,11 +267,11 @@ struct LibraryView: View {
             }
             .scrollTargetLayout()
         }
-        .scrollTargetBehavior(.paging)
+        .scrollTargetBehavior(.viewAligned)
         .scrollPosition(id: $scrolledBookID)
+        .safeAreaPadding(.horizontal, 40)
         .scrollClipDisabled()
         .frame(height: cardFrameHeight)
-        .contentMargins(.horizontal, horizontalContentMargin, for: .scrollContent)
     }
 
     // MARK: - Play Button
@@ -328,16 +331,30 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Layout Constants
+    // MARK: - Prefetch
 
-    private var cardSpacing: CGFloat { 0 }
+    /// Pre-synthesizes the first segment of the newly centered book so the Voicebox
+    /// inference context is warm by the time the user taps Play.
+    /// Uses detached utility-priority task — result is intentionally discarded here;
+    /// the warm model benefits TTSPlayer's subsequent synthesis calls.
+    private func prefetchFirstSegment(for bookID: Book.ID?) {
+        guard
+            let id = bookID,
+            let book = books.first(where: { $0.id == id }),
+            let firstSegment = book.script?.segments.first,
+            VoiceboxService.shared.isLoaded,
+            VoiceboxService.shared.hasVoiceProfile
+        else { return }
+
+        Task.detached(priority: .utility) {
+            _ = try? await VoiceboxService.shared.synthesize(firstSegment.text)
+        }
+    }
+
+    // MARK: - Layout Constants
 
     private var cardFrameHeight: CGFloat {
         LiquidGlassCard.cardHeight * 1.15 // Account for 1.1x scale + shadow
-    }
-
-    private var horizontalContentMargin: CGFloat {
-        (UIScreen.main.bounds.width - LiquidGlassCard.cardWidth) / 2
     }
 }
 

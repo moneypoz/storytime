@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21754" systemVersion="22A380" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="PlaybackProgress" representedClassName="PlaybackProgress" syncable="YES" codeGenerationType="manual">
+        <attribute name="bookID" attributeType="String" defaultValueString=""/>
+        <attribute name="isFinished" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastPlayedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="segmentIndex" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+    </entity>
+    <elements>
+        <element name="PlaybackProgress" positionX="-63" positionY="-18" width="128" height="104"/>
+    </elements>
+</model>

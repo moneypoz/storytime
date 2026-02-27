@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import VoiceboxCore
 
 /// Parent dashboard for managing family access, story credits, and privacy settings
 /// Features Liquid Glass cards (iOS 26+) with iridescent accents
@@ -21,6 +22,8 @@ struct ParentDashboardView: View {
     @State private var showingSpouseInvite = false
     @State private var liveParticipants: [FamilyParticipant] = []
     @State private var showingPaywall = false
+    @State private var showingModelDownload = false
+    @State private var modelIsReady = ModelManager().isModelReady
 
     // MARK: - Haptics
 
@@ -49,6 +52,9 @@ struct ParentDashboardView: View {
                     // Privacy Shield
                     privacyShieldSection
 
+                    // Voice Model
+                    voiceModelSection
+
                     Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 24)
@@ -60,6 +66,13 @@ struct ParentDashboardView: View {
             PaywallBottomSheet(selectedBook: nil)
                 .presentationDetents([.large])
                 .presentationCornerRadius(32)
+        }
+        .fullScreenCover(isPresented: $showingModelDownload, onDismiss: {
+            modelIsReady = ModelManager().isModelReady
+        }) {
+            ModelDownloadView {
+                modelIsReady = ModelManager().isModelReady
+            }
         }
     }
 
@@ -146,6 +159,34 @@ struct ParentDashboardView: View {
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.5))
                 }
+
+                Divider()
+                    .background(.white.opacity(0.1))
+
+                // Share own voice profile
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Share Your Voice")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Send your voice to a family member")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.45))
+                    }
+                    Spacer()
+                    ShareVoiceProfileButton()
+                }
+
+                // Received voices from family
+                if !FamilySyncManager.shared.syncedProfiles.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Received Voices")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.55))
+
+                        SyncedProfilesView()
+                    }
+                }
             }
         }
     }
@@ -223,6 +264,64 @@ struct ParentDashboardView: View {
                 .padding(.vertical, 10)
                 .background(.white.opacity(0.05), in: Capsule())
             }
+        }
+    }
+
+    // MARK: - Voice Model Section
+
+    private var voiceModelSection: some View {
+        DashboardCard(title: "Voice Model", icon: "waveform.circle.fill") {
+            VStack(spacing: 16) {
+                // Status row
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Qwen3-TTS Engine")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+
+                        Text(modelIsReady ? "Stored privately on-device" : "Not downloaded")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+
+                    Spacer()
+
+                    // Status indicator
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(modelIsReady ? Color(hex: "4ADE80") : Color(hex: "F87171"))
+                            .frame(width: 8, height: 8)
+
+                        Text(modelIsReady ? "Ready" : "Missing")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(modelIsReady ? Color(hex: "4ADE80") : Color(hex: "F87171"))
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(.white.opacity(0.05), in: Capsule())
+                }
+
+                // Re-download button — only shown when model is missing
+                if !modelIsReady {
+                    Button {
+                        showingModelDownload = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Download Model")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(iridescentButtonBackground)
+                        .clipShape(Capsule())
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                }
+            }
+            .animation(.easeInOut(duration: 0.3), value: modelIsReady)
         }
     }
 

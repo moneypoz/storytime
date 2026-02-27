@@ -1,9 +1,16 @@
-import SwiftUI
 import AVFoundation
+import SwiftUI
+import VoiceboxCore
 
 /// Full-screen story player with dreamscape background and liquid glass orb.
-/// Uses AVSpeechSynthesizer for expressive TTS playback with mood-based prosody.
-/// Falls back to a progress timer for books without a script.
+///
+/// TTSPlayer uses two paths:
+///   • Voicebox (primary)  — if VoiceboxService is loaded and a voice profile
+///     is registered.  Segments are synthesized on Tokio's blocking pool and
+///     played via AVAudioPlayer.  The next segment is pre-fetched while the
+///     current one plays, so gaps between segments are eliminated.
+///   • AVSpeechSynthesizer (fallback) — used when the model is not yet
+///     downloaded or no voice profile has been recorded.
 struct PlayerView: View {
 
     // MARK: - Properties
@@ -27,17 +34,28 @@ struct PlayerView: View {
         self.book = book
         self.namespace = namespace
         self.onDismiss = onDismiss
-        self._ttsPlayer = StateObject(wrappedValue: TTSPlayer(script: book.script))
+
+        // Restore saved segment index.  If the story was previously finished,
+        // start from the beginning so the user gets a fresh playthrough.
+        let saved = PersistenceController.shared.fetchProgress(for: book.id)
+        let startSegment = (saved.map { !$0.isFinished && $0.segmentIndex > 0 } == true)
+            ? Int(saved!.segmentIndex) : 0
+
+        self._ttsPlayer = StateObject(
+            wrappedValue: TTSPlayer(
+                script: book.script,
+                bookID: book.id,
+                startSegment: startSegment
+            )
+        )
     }
 
     // MARK: - Body
 
     var body: some View {
         ZStack {
-            // Dreamscape background
             DreamscapeBackground(atmosphereOpacity: atmosphereOpacity)
 
-            // Content
             VStack(spacing: 0) {
                 closeButton
                     .padding(.top, 16)
@@ -47,7 +65,6 @@ struct PlayerView: View {
                 titleSection
                     .padding(.bottom, 40)
 
-                // Liquid glass orb — animated by real TTS audio level
                 LiquidGlassOrb(
                     audioLevel: ttsPlayer.audioLevel,
                     progress: ttsPlayer.progress,
@@ -64,11 +81,9 @@ struct PlayerView: View {
                 playPauseButton
                     .padding(.bottom, 60)
             }
-            // Fade controls out as the finish view blooms in
             .opacity(ttsPlayer.isFinished ? 0 : 1)
             .animation(.easeInOut(duration: 0.3), value: ttsPlayer.isFinished)
 
-            // Story finish celebration
             if ttsPlayer.isFinished {
                 StoryFinishView(
                     book: book,
@@ -93,7 +108,6 @@ struct PlayerView: View {
     private var closeButton: some View {
         HStack {
             Spacer()
-
             Button {
                 withAnimation(DesignSystem.slowTransition) {
                     ttsPlayer.stop()
@@ -127,37 +141,27 @@ struct PlayerView: View {
     }
 
     private var playbackStatus: String {
-        if ttsPlayer.isPlaying {
-            return "Playing.."
-        } else if ttsPlayer.progress > 0 {
-            return "Paused"
-        } else {
-            return "Tap to begin"
-        }
+        if ttsPlayer.isPlaying    { return "Playing.." }
+        if ttsPlayer.progress > 0 { return "Paused" }
+        return "Tap to begin"
     }
 
     // MARK: - Play/Pause Button
 
     private var playPauseButton: some View {
         Button {
-            if ttsPlayer.isPlaying {
-                ttsPlayer.pause()
-            } else {
-                ttsPlayer.play()
-            }
+            if ttsPlayer.isPlaying { ttsPlayer.pause() } else { ttsPlayer.play() }
         } label: {
             ZStack {
-                // Glass background
                 Circle()
                     .fill(.clear)
                     .frame(width: 80, height: 80)
                     .glassEffect(.regular.interactive(), in: .circle)
 
-                // Icon
                 Image(systemName: ttsPlayer.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 28, weight: .medium))
                     .foregroundStyle(.white)
-                    .offset(x: ttsPlayer.isPlaying ? 0 : 3) // Visual centering for play icon
+                    .offset(x: ttsPlayer.isPlaying ? 0 : 3)
                     .contentTransition(.symbolEffect(.replace))
             }
         }
@@ -176,25 +180,26 @@ struct PlayerView: View {
     private func updateAtmosphere() {
         withAnimation(.easeInOut(duration: 1.5)) {
             switch ttsPlayer.currentMood {
-            case .excited:
-                glowVibrancy = .vivid
-                atmosphereOpacity = 1.0
-            case .sleepy:
-                glowVibrancy = .subtle
-                atmosphereOpacity = 0.2
-            case .normal, nil:
-                glowVibrancy = .standard
-                atmosphereOpacity = 1.0
+            case .excited:       glowVibrancy = .vivid;    atmosphereOpacity = 1.0
+            case .sleepy:        glowVibrancy = .subtle;   atmosphereOpacity = 0.2
+            case .normal, nil:   glowVibrancy = .standard; atmosphereOpacity = 1.0
             }
         }
     }
 }
 
-// MARK: - TTS Player
+// MARK: - TTSPlayer
 
-/// Observable TTS engine wrapping AVSpeechSynthesizer.
-/// Plays StoryScript segments sequentially with mood-based prosody.
-/// Falls back to a progress timer for books without a script.
+/// Observable playback engine.
+///
+/// Pipeline (Voicebox path):
+///   playSegment(N) → start synthesis of N
+///                 → when N ready, play via AVAudioPlayer
+///                 → immediately prefetch segment N+1 in background
+///                 → AVAudioPlayerDelegate fires → playSegment(N+1) with zero gap
+///
+/// Fallback (AVSpeechSynthesizer path):
+///   Used when VoiceboxService.isLoaded == false or hasVoiceProfile == false.
 final class TTSPlayer: NSObject, ObservableObject {
 
     @Published private(set) var isPlaying = false
@@ -204,19 +209,47 @@ final class TTSPlayer: NSObject, ObservableObject {
     @Published private(set) var progress: Double = 0.0
     @Published private(set) var currentMood: StoryScript.Segment.Mood?
 
-    private let synthesizer = AVSpeechSynthesizer()
+    // ── Shared ──────────────────────────────────────────────────────────────
+
     private let segments: [StoryScript.Segment]
+    private let bookID: String
     private var levelTimer: Timer?
+
+    // ── Voicebox pipeline ────────────────────────────────────────────────────
+
+    /// WAV bytes cached per segment index.  Survives pause/resume.
+    private var wavCache: [Int: Data] = [:]
+    private var currentPlayer: AVAudioPlayer?
+    private var prefetchTask: Task<Void, Never>?
+
+    // ── AVSpeechSynthesizer fallback ─────────────────────────────────────────
+
+    private let synthesizer = AVSpeechSynthesizer()
     private var progressTimer: Timer?
     private let fallbackDuration: Double = 180
 
-    init(script: StoryScript?) {
-        self.segments = script?.segments ?? []
-        super.init()
-        synthesizer.delegate = self
+    // ── Path selection ───────────────────────────────────────────────────────
+
+    private var useVoicebox: Bool {
+        VoiceboxService.shared.isLoaded && VoiceboxService.shared.hasVoiceProfile
     }
 
-    // MARK: - Public Control
+    // MARK: - Init
+
+    init(script: StoryScript?, bookID: String, startSegment: Int = 0) {
+        self.segments = script?.segments ?? []
+        self.bookID   = bookID
+        super.init()
+        synthesizer.delegate = self
+
+        // Restore state — must happen after super.init()
+        currentSegmentIndex = startSegment
+        if !segments.isEmpty, startSegment > 0 {
+            progress = Double(startSegment) / Double(segments.count)
+        }
+    }
+
+    // MARK: - Public control
 
     func play() {
         guard !isFinished else { return }
@@ -225,10 +258,19 @@ final class TTSPlayer: NSObject, ObservableObject {
 
         if segments.isEmpty {
             startFallbackTimer()
-        } else if synthesizer.isPaused {
-            synthesizer.continueSpeaking()
-        } else if !synthesizer.isSpeaking {
-            speakCurrentSegment()
+        } else if useVoicebox {
+            // If the player is mid-segment and just paused, resume it
+            if let player = currentPlayer, !player.isPlaying {
+                player.play()
+            } else if currentPlayer == nil {
+                playVoiceboxSegment(at: currentSegmentIndex)
+            }
+        } else {
+            if synthesizer.isPaused {
+                synthesizer.continueSpeaking()
+            } else if !synthesizer.isSpeaking {
+                speakCurrentSegment()
+            }
         }
 
         startLevelSimulation()
@@ -236,16 +278,27 @@ final class TTSPlayer: NSObject, ObservableObject {
 
     func pause() {
         isPlaying = false
+        prefetchTask?.cancel()
+        currentPlayer?.pause()
         if segments.isEmpty {
             progressTimer?.invalidate()
-        } else {
+        } else if !useVoicebox {
             synthesizer.pauseSpeaking(at: .word)
         }
         stopLevelSimulation()
+        PersistenceController.shared.saveProgress(
+            bookID: bookID,
+            segmentIndex: currentSegmentIndex,
+            isFinished: false
+        )
     }
 
     func stop() {
         isPlaying = false
+        prefetchTask?.cancel()
+        prefetchTask = nil
+        currentPlayer?.stop()
+        currentPlayer = nil
         progressTimer?.invalidate()
         synthesizer.stopSpeaking(at: .immediate)
         stopLevelSimulation()
@@ -257,19 +310,102 @@ final class TTSPlayer: NSObject, ObservableObject {
         progress = 0
         isFinished = false
         currentMood = nil
+        wavCache.removeAll()   // clear cache so re-play uses fresh audio
+        PersistenceController.shared.resetProgress(for: bookID)
     }
 
-    // MARK: - Private
+    // MARK: - Voicebox pipeline
+
+    private func playVoiceboxSegment(at index: Int) {
+        guard index < segments.count else { markFinished(); return }
+
+        currentSegmentIndex = index
+        currentMood = segments[index].mood
+        progress = Double(index) / Double(segments.count)
+        PersistenceController.shared.saveProgress(
+            bookID: bookID,
+            segmentIndex: index,
+            isFinished: false
+        )
+
+        // Mood-aware profile selection (falls back to default if mood clip absent)
+        let profilePath = ModelManager().voiceProfilePath(
+            forMood: segments[index].mood.rawValue
+        )
+
+        if let cached = wavCache[index] {
+            // Zero gap — already synthesized while previous segment played
+            startPlayer(wav: cached, segmentIndex: index)
+            prefetchSegment(index + 1, profilePath: profilePath)
+        } else {
+            // Synthesize now (first segment, or cache miss after restart)
+            Task { @MainActor [weak self] in
+                guard let self, isPlaying else { return }
+                do {
+                    let wav = try await VoiceboxService.shared.synthesize(segments[index].text)
+                    wavCache[index] = wav
+                    guard isPlaying else { return }
+                    startPlayer(wav: wav, segmentIndex: index)
+                    prefetchSegment(index + 1, profilePath: profilePath)
+                } catch {
+                    segmentDidFinish(index)   // skip on error, advance to next
+                }
+            }
+        }
+    }
+
+    private func prefetchSegment(_ index: Int, profilePath: String) {
+        guard index < segments.count, wavCache[index] == nil else { return }
+        prefetchTask?.cancel()
+        prefetchTask = Task { @MainActor [weak self] in
+            guard let self, !Task.isCancelled else { return }
+            guard let wav = try? await VoiceboxService.shared.synthesize(
+                segments[index].text
+            ) else { return }
+            guard !Task.isCancelled else { return }
+            wavCache[index] = wav
+        }
+    }
+
+    private func startPlayer(wav: Data, segmentIndex: Int) {
+        do {
+            let player = try AVAudioPlayer(data: wav)
+            player.delegate = self
+            player.isMeteringEnabled = true
+            player.prepareToPlay()
+            player.play()
+            currentPlayer = player
+        } catch {
+            segmentDidFinish(segmentIndex)
+        }
+    }
+
+    private func segmentDidFinish(_ index: Int) {
+        guard isPlaying else { return }
+        currentPlayer = nil
+        if useVoicebox {
+            playVoiceboxSegment(at: index + 1)
+        } else {
+            currentSegmentIndex = index + 1
+            speakCurrentSegment()
+        }
+    }
+
+    private func markFinished() {
+        isFinished = true
+        isPlaying = false
+        stopLevelSimulation()
+        PersistenceController.shared.saveProgress(
+            bookID: bookID,
+            segmentIndex: segments.count,
+            isFinished: true
+        )
+    }
+
+    // MARK: - AVSpeechSynthesizer fallback
 
     private func speakCurrentSegment() {
-        guard currentSegmentIndex < segments.count else {
-            DispatchQueue.main.async {
-                self.isFinished = true
-                self.isPlaying = false
-                self.stopLevelSimulation()
-            }
-            return
-        }
+        guard currentSegmentIndex < segments.count else { markFinished(); return }
 
         let segment = segments[currentSegmentIndex]
         currentMood = segment.mood
@@ -287,32 +423,45 @@ final class TTSPlayer: NSObject, ObservableObject {
     private func startFallbackTimer() {
         let tickInterval: Double = 0.1
         let increment = tickInterval / fallbackDuration
-        progressTimer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { [weak self] _ in
+        progressTimer = Timer.scheduledTimer(
+            withTimeInterval: tickInterval,
+            repeats: true
+        ) { [weak self] _ in
             guard let self else { return }
             DispatchQueue.main.async {
                 if self.progress < 1.0 {
                     self.progress += increment
                 } else {
                     self.progressTimer?.invalidate()
-                    self.isFinished = true
-                    self.isPlaying = false
-                    self.stopLevelSimulation()
+                    self.markFinished()
                 }
             }
         }
     }
 
+    // MARK: - Audio session + level simulation
+
     private func configureAudioSession() {
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
         try? AVAudioSession.sharedInstance().setActive(true)
     }
 
     private func startLevelSimulation() {
         levelTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
             guard let self else { return }
-            let base: Float = 0.3
-            let variation = Float.random(in: -0.2...0.35)
-            let target = max(0, min(1, base + variation))
+
+            let target: Float
+            if let player = currentPlayer, player.isPlaying {
+                // Real metering from AVAudioPlayer — convert dBFS to linear [0, 1]
+                player.updateMeters()
+                let db = player.averagePower(forChannel: 0)  // typically -160…0 dBFS
+                let linear = pow(10.0, db / 20.0)            // linear amplitude
+                target = max(0, min(1, linear * 3.5))        // scale up for orb visibility
+            } else {
+                // Fallback for AVSpeechSynthesizer path (no metering API)
+                target = max(0, min(1, 0.3 + Float.random(in: -0.2...0.35)))
+            }
+
             DispatchQueue.main.async {
                 self.audioLevel = self.audioLevel * 0.6 + target * 0.4
             }
@@ -329,17 +478,29 @@ final class TTSPlayer: NSObject, ObservableObject {
 // MARK: - AVSpeechSynthesizerDelegate
 
 extension TTSPlayer: AVSpeechSynthesizerDelegate {
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+    func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        didFinish utterance: AVSpeechUtterance
+    ) {
         DispatchQueue.main.async {
             self.currentSegmentIndex += 1
-            if self.isPlaying {
-                self.speakCurrentSegment()
-            }
+            if self.isPlaying { self.speakCurrentSegment() }
         }
     }
 }
 
-// MARK: - Glass Button Style
+// MARK: - AVAudioPlayerDelegate
+
+extension TTSPlayer: AVAudioPlayerDelegate {
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully _: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, isPlaying else { return }
+            segmentDidFinish(currentSegmentIndex)
+        }
+    }
+}
+
+// MARK: - GlassButtonStyle
 
 struct GlassButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -354,10 +515,5 @@ struct GlassButtonStyle: ButtonStyle {
 
 #Preview {
     @Previewable @Namespace var namespace
-
-    PlayerView(
-        book: Book.samples[0],
-        namespace: namespace,
-        onDismiss: {}
-    )
+    PlayerView(book: Book.samples[0], namespace: namespace, onDismiss: {})
 }
