@@ -16,6 +16,12 @@ struct RecordingView: View {
 
             phaseContent
                 .animation(.spring(duration: 0.5, bounce: 0.1), value: viewModel.phase)
+
+            if case .ready = viewModel.phase, !viewModel.isEngineReady {
+                modelEngineOverlay
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.4), value: viewModel.isEngineReady)
+            }
         }
         .onChange(of: viewModel.phase) { _, phase in
             if case .done = phase { appState.completeOnboarding() }
@@ -98,6 +104,42 @@ struct RecordingView: View {
         case .failed(let message):
             failedContent(message: message)
                 .transition(.opacity)
+        }
+    }
+
+    // MARK: - Engine-not-ready overlay
+
+    /// Full-screen blur overlay shown while VoiceboxService is still loading its
+    /// weights into memory.  Sits above `.ready` content so the Begin button is
+    /// visible but unreachable — the guard in RecordingViewModel.start() is the
+    /// hard gate; this provides the soft visual affordance.
+    private var modelEngineOverlay: some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea()
+
+            VStack(spacing: 28) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 56, weight: .ultraLight))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .symbolEffect(.pulse)
+
+                VStack(spacing: 10) {
+                    Text("Fine-tuning your storyteller's studio…")
+                        .font(.system(.title3, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+
+                    Text("This only takes a moment.")
+                        .font(.system(.callout, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+
+                StudioShimmerBar()
+                    .padding(.top, 4)
+            }
+            .padding(.horizontal, 40)
         }
     }
 
@@ -653,6 +695,64 @@ struct RecordingView: View {
         )
     }
 
+}
+
+// MARK: - StudioShimmerBar
+
+/// Indeterminate metallic shimmer bar — identical visual language to the
+/// download and recording progress bars, but looping forever rather than
+/// filling toward a known total.
+private struct StudioShimmerBar: View {
+
+    /// Drives the shimmer blob's horizontal travel.  Animates 0 → 1 on appear,
+    /// repeating linearly so the blob sweeps left-to-right continuously.
+    @State private var phase: CGFloat = 0
+
+    private let shimmerWidth: CGFloat = 80
+    private let duration: Double = 1.5
+
+    var body: some View {
+        GeometryReader { geo in
+            // Blob starts fully off the left edge and exits fully off the right.
+            let travel = geo.size.width + shimmerWidth
+            let offset = -shimmerWidth + phase * travel
+
+            ZStack(alignment: .leading) {
+                // Track
+                Rectangle()
+                    .fill(.white.opacity(0.07))
+
+                // Traveling metallic blob — soft-edged gradient fades to clear
+                // at both ends so entry and exit are seamless.
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear,                                  location: 0.0),
+                                .init(color: Color(hex: "6b7280").opacity(0.5),       location: 0.2),
+                                .init(color: Color(hex: "d1d5db"),                    location: 0.4),
+                                .init(color: Color(hex: "f9fafb"),                    location: 0.5),
+                                .init(color: Color(hex: "d1d5db"),                    location: 0.6),
+                                .init(color: Color(hex: "6b7280").opacity(0.5),       location: 0.8),
+                                .init(color: .clear,                                  location: 1.0),
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: shimmerWidth)
+                    .offset(x: offset)
+            }
+            .clipped()
+        }
+        .frame(height: 3)
+        .shadow(color: .white.opacity(0.25), radius: 6)
+        .onAppear {
+            withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
+                phase = 1.0
+            }
+        }
+    }
 }
 
 // MARK: - LiveWaveformBar

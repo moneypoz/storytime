@@ -1,4 +1,5 @@
 import AVFoundation
+import Combine
 import SwiftUI
 import VoiceboxCore
 
@@ -126,6 +127,18 @@ final class RecordingViewModel: NSObject, ObservableObject {
     @Published private(set) var isValidationReady = false
     /// True while the preview audio is actively playing (drives waveform animation).
     @Published private(set) var isPlayingValidation = false
+    /// True once VoiceboxService has finished loading its weights into memory.
+    @Published private(set) var isEngineReady = false
+
+    // MARK: - Init
+
+    override init() {
+        super.init()
+        // Mirror VoiceboxService's isLoaded so the UI can gate on engine readiness
+        // without storing a manual AnyCancellable — assign(to:) ties lifecycle to @Published.
+        VoiceboxService.shared.$isLoaded
+            .assign(to: &$isEngineReady)
+    }
 
     // MARK: - Private
 
@@ -144,6 +157,7 @@ final class RecordingViewModel: NSObject, ObservableObject {
     // MARK: - Public control
 
     func start() {
+        guard isEngineReady else { return }
         Task { await beginCountdown(for: .warmth) }
     }
 

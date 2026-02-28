@@ -1,4 +1,5 @@
 import AVFoundation
+import MediaPlayer
 import SwiftUI
 import VoiceboxCore
 
@@ -43,11 +44,7 @@ struct PlayerView: View {
             ? Int(saved!.segmentIndex) : 0
 
         self._ttsPlayer = StateObject(
-            wrappedValue: TTSPlayer(
-                script: book.script,
-                bookID: book.id,
-                startSegment: startSegment
-            )
+            wrappedValue: TTSPlayer(book: book, startSegment: startSegment)
         )
     }
 
@@ -106,6 +103,13 @@ struct PlayerView: View {
                     onFinish: onDismiss
                 )
                 .zIndex(2)
+            }
+
+            if ttsPlayer.isInterrupted {
+                interruptionOverlay
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.3), value: ttsPlayer.isInterrupted)
+                    .zIndex(3)
             }
         }
         .onAppear {
@@ -248,6 +252,42 @@ struct PlayerView: View {
         .buttonStyle(GlassButtonStyle())
     }
 
+    // MARK: - Interruption Overlay
+
+    private var interruptionOverlay: some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThickMaterial)
+                .ignoresSafeArea()
+
+            VStack(spacing: 32) {
+                Image(systemName: "phone.down.fill")
+                    .font(.system(size: 44, weight: .ultraLight))
+                    .foregroundStyle(.white.opacity(0.55))
+
+                VStack(spacing: 10) {
+                    Text("Story paused")
+                        .font(.system(.title2, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text("Ready when you are.")
+                        .font(.system(.callout, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+
+                Button(action: { ttsPlayer.resumeAfterInterruption() }) {
+                    Label("Resume Story", systemImage: "play.fill")
+                        .font(.system(.title3, design: .rounded, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .glassEffect(.regular.interactive(), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 48)
+            }
+        }
+    }
+
     // MARK: - Actions
 
     private func restartPlayback() {
@@ -288,6 +328,9 @@ final class TTSPlayer: NSObject, ObservableObject {
     @Published private(set) var isFinished = false
     @Published private(set) var progress: Double = 0.0
     @Published private(set) var currentMood: StoryScript.Segment.Mood?
+    /// True while a phone call (or other audio session interruption) is active.
+    /// PlayerView shows a "Resume Story" overlay; auto-resume is intentionally suppressed.
+    @Published private(set) var isInterrupted = false
 
     /// Speaker emoji for the active segment (e.g. 🦁 / 🐭 / 🌿).
     /// Derived from `currentSegmentIndex` — updates automatically as playback advances.
@@ -297,9 +340,13 @@ final class TTSPlayer: NSObject, ObservableObject {
 
     // ── Shared ──────────────────────────────────────────────────────────────
 
+    private let book: Book
     private let segments: [StoryScript.Segment]
     private let bookID: String
     private var levelTimer: Timer?
+    private var interruptionObserver: NSObjectProtocol?
+    /// Rendered once (lazily) from book.coverGradient + book.icon for MPNowPlayingInfoCenter.
+    private lazy var coverArtImage: UIImage = makeCoverArtImage()
 
     // ── Voicebox pipeline ────────────────────────────────────────────────────
 
@@ -322,9 +369,10 @@ final class TTSPlayer: NSObject, ObservableObject {
 
     // MARK: - Init
 
-    init(script: StoryScript?, bookID: String, startSegment: Int = 0) {
-        self.segments = script?.segments ?? []
-        self.bookID   = bookID
+    init(book: Book, startSegment: Int = 0) {
+        self.book     = book
+        self.segments = book.script?.segments ?? []
+        self.bookID   = book.id
         super.init()
         synthesizer.delegate = self
 
@@ -332,6 +380,15 @@ final class TTSPlayer: NSObject, ObservableObject {
         currentSegmentIndex = startSegment
         if !segments.isEmpty, startSegment > 0 {
             progress = Double(startSegment) / Double(segments.count)
+        }
+
+        setupRemoteCommands()
+        registerForInterruptions()
+    }
+
+    deinit {
+        if let obs = interruptionObserver {
+            NotificationCenter.default.removeObserver(obs)
         }
     }
 
@@ -341,6 +398,7 @@ final class TTSPlayer: NSObject, ObservableObject {
         guard !isFinished else { return }
         configureAudioSession()
         isPlaying = true
+        updateNowPlayingInfo()
 
         if segments.isEmpty {
             startFallbackTimer()
@@ -364,6 +422,7 @@ final class TTSPlayer: NSObject, ObservableObject {
 
     func pause() {
         isPlaying = false
+        updateNowPlayingInfo()
         prefetchTask?.cancel()
         currentPlayer?.pause()
         if segments.isEmpty {
@@ -388,6 +447,7 @@ final class TTSPlayer: NSObject, ObservableObject {
         progressTimer?.invalidate()
         synthesizer.stopSpeaking(at: .immediate)
         stopLevelSimulation()
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
     func restart() {
@@ -408,6 +468,7 @@ final class TTSPlayer: NSObject, ObservableObject {
         currentSegmentIndex = index
         currentMood = segments[index].mood
         progress = Double(index) / Double(segments.count)
+        updateNowPlayingInfo()
         PersistenceController.shared.saveProgress(
             bookID: bookID,
             segmentIndex: index,
@@ -481,6 +542,7 @@ final class TTSPlayer: NSObject, ObservableObject {
         isFinished = true
         isPlaying = false
         stopLevelSimulation()
+        updateNowPlayingInfo()   // sets playbackRate to 0.0 on lock screen
         PersistenceController.shared.saveProgress(
             bookID: bookID,
             segmentIndex: segments.count,
@@ -504,6 +566,7 @@ final class TTSPlayer: NSObject, ObservableObject {
 
         synthesizer.speak(utterance)
         progress = Double(currentSegmentIndex) / Double(segments.count)
+        updateNowPlayingInfo()
     }
 
     private func startFallbackTimer() {
@@ -528,7 +591,9 @@ final class TTSPlayer: NSObject, ObservableObject {
     // MARK: - Audio session + level simulation
 
     private func configureAudioSession() {
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        // .spokenAudio: optimised for narration — ducks competing audio,
+        // continues when screen locks, and participates in Now Playing.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
         try? AVAudioSession.sharedInstance().setActive(true)
     }
 
@@ -558,6 +623,114 @@ final class TTSPlayer: NSObject, ObservableObject {
         levelTimer?.invalidate()
         levelTimer = nil
         DispatchQueue.main.async { self.audioLevel = 0 }
+    }
+
+    // MARK: - Interruption handling
+
+    private func registerForInterruptions() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleInterruption(notification)
+        }
+    }
+
+    private func handleInterruption(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+        switch type {
+        case .began:
+            // A call came in — pause immediately and show the Resume overlay.
+            if isPlaying { pause() }
+            isInterrupted = true
+        case .ended:
+            // Don't auto-resume: jarring at bedtime; let the parent tap Resume.
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    func resumeAfterInterruption() {
+        isInterrupted = false
+        play()
+    }
+
+    // MARK: - MPRemoteCommandCenter
+
+    private func setupRemoteCommands() {
+        let center = MPRemoteCommandCenter.shared()
+
+        center.playCommand.addTarget { [weak self] _ in
+            self?.play(); return .success
+        }
+        center.pauseCommand.addTarget { [weak self] _ in
+            self?.pause(); return .success
+        }
+        center.togglePlayPauseCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            isPlaying ? pause() : play()
+            return .success
+        }
+        // No chapter skip — segment boundaries are internal
+        center.nextTrackCommand.isEnabled     = false
+        center.previousTrackCommand.isEnabled = false
+    }
+
+    // MARK: - Now Playing
+
+    private func updateNowPlayingInfo() {
+        let artist  = FamilySyncManager.shared.activeVoiceName ?? "Your Voice"
+        let perSeg  = 15.0   // ~15 s per segment at a calm bedtime pace
+        let artwork = MPMediaItemArtwork(boundsSize: CGSize(width: 300, height: 300)) {
+            [weak self] _ in self?.coverArtImage ?? UIImage()
+        }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+            MPMediaItemPropertyTitle:                    book.title,
+            MPMediaItemPropertyArtist:                   artist,
+            MPMediaItemPropertyArtwork:                  artwork,
+            MPMediaItemPropertyPlaybackDuration:         Double(segments.count) * perSeg,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: Double(currentSegmentIndex) * perSeg,
+            MPNowPlayingInfoPropertyPlaybackRate:        isPlaying ? 1.0 : 0.0,
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
+        ]
+    }
+
+    /// Renders the book's cover gradient + SF symbol icon to a 300×300 UIImage
+    /// for display in Now Playing / lock screen artwork.
+    private func makeCoverArtImage() -> UIImage {
+        let size = CGSize(width: 300, height: 300)
+        return UIGraphicsImageRenderer(size: size).image { ctx in
+            // Gradient fill
+            let cgColors = book.coverGradient.map { UIColor($0).cgColor } as CFArray
+            if let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                colors: cgColors,
+                locations: nil
+            ) {
+                ctx.cgContext.drawLinearGradient(
+                    gradient,
+                    start: .zero,
+                    end: CGPoint(x: size.width, y: size.height),
+                    options: []
+                )
+            }
+            // SF Symbol overlay — same icon shown on the library card
+            let config = UIImage.SymbolConfiguration(pointSize: 72, weight: .ultraLight)
+            if let sym = UIImage(systemName: book.icon, withConfiguration: config) {
+                let tinted = sym.withTintColor(
+                    .white.withAlphaComponent(0.6),
+                    renderingMode: .alwaysOriginal
+                )
+                tinted.draw(at: CGPoint(
+                    x: (size.width  - tinted.size.width)  / 2,
+                    y: (size.height - tinted.size.height) / 2
+                ))
+            }
+        }
     }
 }
 
