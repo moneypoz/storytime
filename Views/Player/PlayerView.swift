@@ -320,6 +320,7 @@ struct PlayerView: View {
 ///
 /// Fallback (AVSpeechSynthesizer path):
 ///   Used when VoiceboxService.isLoaded == false or hasVoiceProfile == false.
+@MainActor
 final class TTSPlayer: NSObject, ObservableObject {
 
     @Published private(set) var isPlaying = false
