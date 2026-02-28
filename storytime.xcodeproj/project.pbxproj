@@ -14,10 +14,8 @@
 		E100000000000000000003A5 /* PreloadedLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002A5 /* PreloadedLibrary.swift */; };
 		E100000000000000000003A6 /* AudioInputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002A6 /* AudioInputManager.swift */; };
 		E100000000000000000003A7 /* SecureStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002A7 /* SecureStorageService.swift */; };
-		E100000000000000000003A8 /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002A8 /* SpeechRecognizer.swift */; };
 		E100000000000000000003A9 /* SpouseInviteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002A9 /* SpouseInviteService.swift */; };
 		E100000000000000000003AA /* StoreKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002AA /* StoreKitService.swift */; };
-		E100000000000000000003AB /* VoiceTokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002AB /* VoiceTokenizer.swift */; };
 		E100000000000000000003AC /* AIGlowModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002AC /* AIGlowModifier.swift */; };
 		E100000000000000000003AD /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002AD /* DesignSystem.swift */; };
 		E100000000000000000003AE /* BookCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002AE /* BookCard.swift */; };
@@ -30,7 +28,6 @@
 		E100000000000000000003B5 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002B5 /* PlayerView.swift */; };
 		E100000000000000000003B6 /* StoryFinishView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002B6 /* StoryFinishView.swift */; };
 		E100000000000000000003B7 /* ParentDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002B7 /* ParentDashboardView.swift */; };
-		E100000000000000000003B8 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002B8 /* OnboardingView.swift */; };
 		E100000000000000000003B9 /* SuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002B9 /* SuccessView.swift */; };
 		E100000000000000000003BA /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002BA /* WelcomeView.swift */; };
 		E100000000000000000003BB /* PaywallBottomSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002BB /* PaywallBottomSheet.swift */; };
@@ -48,10 +45,8 @@
 		E100000000000000000002A5 /* PreloadedLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreloadedLibrary.swift; sourceTree = "<group>"; };
 		E100000000000000000002A6 /* AudioInputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioInputManager.swift; sourceTree = "<group>"; };
 		E100000000000000000002A7 /* SecureStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStorageService.swift; sourceTree = "<group>"; };
-		E100000000000000000002A8 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
 		E100000000000000000002A9 /* SpouseInviteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpouseInviteService.swift; sourceTree = "<group>"; };
 		E100000000000000000002AA /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
-		E100000000000000000002AB /* VoiceTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceTokenizer.swift; sourceTree = "<group>"; };
 		E100000000000000000002AC /* AIGlowModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGlowModifier.swift; sourceTree = "<group>"; };
 		E100000000000000000002AD /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		E100000000000000000002AE /* BookCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookCard.swift; sourceTree = "<group>"; };
@@ -64,7 +59,6 @@
 		E100000000000000000002B5 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		E100000000000000000002B6 /* StoryFinishView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryFinishView.swift; sourceTree = "<group>"; };
 		E100000000000000000002B7 /* ParentDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParentDashboardView.swift; sourceTree = "<group>"; };
-		E100000000000000000002B8 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		E100000000000000000002B9 /* SuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuccessView.swift; sourceTree = "<group>"; };
 		E100000000000000000002BA /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		E100000000000000000002BB /* PaywallBottomSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallBottomSheet.swift; sourceTree = "<group>"; };
@@ -132,10 +126,8 @@
 			children = (
 				E100000000000000000002A6 /* AudioInputManager.swift */,
 				E100000000000000000002A7 /* SecureStorageService.swift */,
-				E100000000000000000002A8 /* SpeechRecognizer.swift */,
 				E100000000000000000002A9 /* SpouseInviteService.swift */,
 				E100000000000000000002AA /* StoreKitService.swift */,
-				E100000000000000000002AB /* VoiceTokenizer.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -204,7 +196,6 @@
 		E100000000000000000001A9 /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
-				E100000000000000000002B8 /* OnboardingView.swift */,
 				E100000000000000000002B9 /* SuccessView.swift */,
 				E100000000000000000002BA /* WelcomeView.swift */,
 			);
@@ -304,10 +295,8 @@
 				E100000000000000000003A5 /* PreloadedLibrary.swift in Sources */,
 				E100000000000000000003A6 /* AudioInputManager.swift in Sources */,
 				E100000000000000000003A7 /* SecureStorageService.swift in Sources */,
-				E100000000000000000003A8 /* SpeechRecognizer.swift in Sources */,
 				E100000000000000000003A9 /* SpouseInviteService.swift in Sources */,
 				E100000000000000000003AA /* StoreKitService.swift in Sources */,
-				E100000000000000000003AB /* VoiceTokenizer.swift in Sources */,
 				E100000000000000000003AC /* AIGlowModifier.swift in Sources */,
 				E100000000000000000003AD /* DesignSystem.swift in Sources */,
 				E100000000000000000003AE /* BookCard.swift in Sources */,
@@ -320,7 +309,6 @@
 				E100000000000000000003B5 /* PlayerView.swift in Sources */,
 				E100000000000000000003B6 /* StoryFinishView.swift in Sources */,
 				E100000000000000000003B7 /* ParentDashboardView.swift in Sources */,
-				E100000000000000000003B8 /* OnboardingView.swift in Sources */,
 				E100000000000000000003B9 /* SuccessView.swift in Sources */,
 				E100000000000000000003BA /* WelcomeView.swift in Sources */,
 				E100000000000000000003BB /* PaywallBottomSheet.swift in Sources */,
