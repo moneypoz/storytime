@@ -79,18 +79,18 @@ pub struct VoiceboxEngine {
 }
 
 impl VoiceboxEngine {
-    pub fn new(model_path: String) -> Result<Arc<Self>, VoiceboxError> {
+    pub fn new(model_path: String) -> Result<Self, VoiceboxError> {
         let device = qwen3_tts::auto_device().map_err(|_| VoiceboxError::InitFailed)?;
         let model = Qwen3TTS::from_pretrained(&model_path, device)
             .map_err(|_| VoiceboxError::InitFailed)?;
 
-        Ok(Arc::new(Self {
+        Ok(Self {
             inner: Arc::new(Mutex::new(EngineInner {
                 model,
                 cached_profile: None,
                 cached_prompt: None,
             })),
-        }))
+        })
     }
 
     /// Synthesise `text` using the voice profile WAV at `profile_path`.
