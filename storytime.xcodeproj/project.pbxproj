@@ -34,6 +34,18 @@
 		E100000000000000000003BC /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002BC /* RecordingView.swift */; };
 		E100000000000000000003BD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002BD /* Assets.xcassets */; };
 		E100000000000000000003BE /* LionAndMouse_Script.json in Resources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002BE /* LionAndMouse_Script.json */; };
+		E100000000000000000003BF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C0 /* AppDelegate.swift */; };
+		E100000000000000000003C0 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C1 /* PersistenceController.swift */; };
+		E100000000000000000003C1 /* PlaybackProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C2 /* PlaybackProgress.swift */; };
+		E100000000000000000003C2 /* CloudSharingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C3 /* CloudSharingService.swift */; };
+		E100000000000000000003C3 /* FamilySyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C4 /* FamilySyncManager.swift */; };
+		E100000000000000000003C4 /* StoryPrefetchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C5 /* StoryPrefetchService.swift */; };
+		E100000000000000000003C5 /* CharacterNarratorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C6 /* CharacterNarratorView.swift */; };
+		E100000000000000000003C6 /* SharingUIComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C7 /* SharingUIComponents.swift */; };
+		E100000000000000000003C7 /* SyncSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C8 /* SyncSuccessView.swift */; };
+		E100000000000000000003C8 /* VoiceArrivalSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C9 /* VoiceArrivalSheet.swift */; };
+		E100000000000000000003C9 /* ModelDownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002CA /* ModelDownloadView.swift */; };
+		E100000000000000000003CA /* RecordingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002CB /* RecordingViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +78,18 @@
 		E100000000000000000002BD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E100000000000000000002BE /* LionAndMouse_Script.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = LionAndMouse_Script.json; sourceTree = "<group>"; };
 		E100000000000000000002BF /* storytime.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = storytime.entitlements; sourceTree = "<group>"; };
+		E100000000000000000002C0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		E100000000000000000002C1 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
+		E100000000000000000002C2 /* PlaybackProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackProgress.swift; sourceTree = "<group>"; };
+		E100000000000000000002C3 /* CloudSharingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSharingService.swift; sourceTree = "<group>"; };
+		E100000000000000000002C4 /* FamilySyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FamilySyncManager.swift; sourceTree = "<group>"; };
+		E100000000000000000002C5 /* StoryPrefetchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryPrefetchService.swift; sourceTree = "<group>"; };
+		E100000000000000000002C6 /* CharacterNarratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterNarratorView.swift; sourceTree = "<group>"; };
+		E100000000000000000002C7 /* SharingUIComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharingUIComponents.swift; sourceTree = "<group>"; };
+		E100000000000000000002C8 /* SyncSuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSuccessView.swift; sourceTree = "<group>"; };
+		E100000000000000000002C9 /* VoiceArrivalSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceArrivalSheet.swift; sourceTree = "<group>"; };
+		E100000000000000000002CA /* ModelDownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadView.swift; sourceTree = "<group>"; };
+		E100000000000000000002CB /* RecordingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +109,7 @@
 				E100000000000000000001A0 /* App */,
 				E100000000000000000001A1 /* Models */,
 				E100000000000000000001A2 /* Services */,
+				E100000000000000000001AC /* Persistence */,
 				E100000000000000000001A3 /* Design */,
 				E100000000000000000001A4 /* Views */,
 				E100000000000000000002BD /* Assets.xcassets */,
@@ -107,6 +132,7 @@
 			children = (
 				E100000000000000000002A1 /* StoryTimeApp.swift */,
 				E100000000000000000002A2 /* HomeView.swift */,
+				E100000000000000000002C0 /* AppDelegate.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -128,8 +154,20 @@
 				E100000000000000000002A7 /* SecureStorageService.swift */,
 				E100000000000000000002A9 /* SpouseInviteService.swift */,
 				E100000000000000000002AA /* StoreKitService.swift */,
+				E100000000000000000002C3 /* CloudSharingService.swift */,
+				E100000000000000000002C4 /* FamilySyncManager.swift */,
+				E100000000000000000002C5 /* StoryPrefetchService.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		E100000000000000000001AC /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				E100000000000000000002C1 /* PersistenceController.swift */,
+				E100000000000000000002C2 /* PlaybackProgress.swift */,
+			);
+			path = Persistence;
 			sourceTree = "<group>";
 		};
 		E100000000000000000001A3 /* Design */ = {
@@ -164,6 +202,10 @@
 				E100000000000000000002B1 /* GlowingOrbButton.swift */,
 				E100000000000000000002B2 /* LiquidGlassCard.swift */,
 				E100000000000000000002B3 /* LiquidGlassOrb.swift */,
+				E100000000000000000002C6 /* CharacterNarratorView.swift */,
+				E100000000000000000002C7 /* SharingUIComponents.swift */,
+				E100000000000000000002C8 /* SyncSuccessView.swift */,
+				E100000000000000000002C9 /* VoiceArrivalSheet.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -198,6 +240,7 @@
 			children = (
 				E100000000000000000002B9 /* SuccessView.swift */,
 				E100000000000000000002BA /* WelcomeView.swift */,
+				E100000000000000000002CA /* ModelDownloadView.swift */,
 			);
 			path = Onboarding;
 			sourceTree = "<group>";
@@ -214,6 +257,7 @@
 			isa = PBXGroup;
 			children = (
 				E100000000000000000002BC /* RecordingView.swift */,
+				E100000000000000000002CB /* RecordingViewModel.swift */,
 			);
 			path = Recording;
 			sourceTree = "<group>";
@@ -313,6 +357,18 @@
 				E100000000000000000003BA /* WelcomeView.swift in Sources */,
 				E100000000000000000003BB /* PaywallBottomSheet.swift in Sources */,
 				E100000000000000000003BC /* RecordingView.swift in Sources */,
+				E100000000000000000003BF /* AppDelegate.swift in Sources */,
+				E100000000000000000003C0 /* PersistenceController.swift in Sources */,
+				E100000000000000000003C1 /* PlaybackProgress.swift in Sources */,
+				E100000000000000000003C2 /* CloudSharingService.swift in Sources */,
+				E100000000000000000003C3 /* FamilySyncManager.swift in Sources */,
+				E100000000000000000003C4 /* StoryPrefetchService.swift in Sources */,
+				E100000000000000000003C5 /* CharacterNarratorView.swift in Sources */,
+				E100000000000000000003C6 /* SharingUIComponents.swift in Sources */,
+				E100000000000000000003C7 /* SyncSuccessView.swift in Sources */,
+				E100000000000000000003C8 /* VoiceArrivalSheet.swift in Sources */,
+				E100000000000000000003C9 /* ModelDownloadView.swift in Sources */,
+				E100000000000000000003CA /* RecordingViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
