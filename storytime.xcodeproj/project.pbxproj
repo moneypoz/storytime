@@ -46,6 +46,7 @@
 		E100000000000000000003C8 /* VoiceArrivalSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002C9 /* VoiceArrivalSheet.swift */; };
 		E100000000000000000003C9 /* ModelDownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002CA /* ModelDownloadView.swift */; };
 		E100000000000000000003CA /* RecordingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E100000000000000000002CB /* RecordingViewModel.swift */; };
+		E100000000000000000003D2 /* VoiceboxCore in Frameworks */ = {isa = PBXBuildFile; productRef = E100000000000000000003D1 /* VoiceboxCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -97,6 +98,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E100000000000000000003D2 /* VoiceboxCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -278,6 +280,9 @@
 			dependencies = (
 			);
 			name = storytime;
+			packageProductDependencies = (
+				E100000000000000000003D1 /* VoiceboxCore */,
+			);
 			productName = storytime;
 			productReference = E100000000000000000000AF /* storytime.app */;
 			productType = "com.apple.product-type.application";
@@ -306,6 +311,9 @@
 				Base,
 			);
 			mainGroup = E100000000000000000000AD;
+			packageReferences = (
+				E100000000000000000003D0 /* XCLocalSwiftPackageReference "VoiceboxCore" */,
+			);
 			productRefGroup = E100000000000000000000AE /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -579,6 +587,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		E100000000000000000003D0 /* XCLocalSwiftPackageReference "VoiceboxCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = VoiceboxCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E100000000000000000003D1 /* VoiceboxCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E100000000000000000003D0 /* XCLocalSwiftPackageReference "VoiceboxCore" */;
+			productName = VoiceboxCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 	};
 	rootObject = E100000000000000000000AB /* Project object */;
