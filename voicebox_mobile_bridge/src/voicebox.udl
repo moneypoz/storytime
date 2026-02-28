@@ -1,0 +1,41 @@
+// voicebox_mobile_bridge/src/voicebox.udl
+
+namespace voicebox_bridge {
+    /// Initialise the shared Tokio runtime.
+    /// Call once at app launch before any async function.
+    void setup_tokio_runtime();
+
+    /// Abort any in-progress synthesize call at the next checkpoint.
+    void cancel_synthesis();
+
+    /// Download Qwen3-TTS-0.6B from HuggingFace Hub into cache_dir (~700 MB).
+    /// Returns the directory path containing model.safetensors.
+    [Async, Throws=VoiceboxError]
+    string download_model(string cache_dir);
+};
+
+interface VoiceboxEngine {
+    /// Load model weights from model_path (directory with model.safetensors).
+    [Throws=VoiceboxError]
+    constructor(string model_path);
+
+    /// Synthesise text using the voice profile WAV at profile_path.
+    /// Returns 16-bit mono PCM WAV bytes at 24 000 Hz.
+    [Async, Throws=VoiceboxError]
+    bytes synthesize(string text, string profile_path);
+
+    /// Normalise ref_audio (raw WAV bytes from the microphone) into a
+    /// 24 kHz mono voice profile.  Store the returned bytes and pass the
+    /// saved path back to synthesize on every call.
+    [Async, Throws=VoiceboxError]
+    bytes create_voice_profile(bytes ref_audio);
+};
+
+// Simple unit-variant error — no associated message field.
+// Use [Error] interface instead if you need the "why" on the Swift side.
+[Error]
+enum VoiceboxError {
+    "InitFailed",
+    "SynthesisError",
+    "ProfileError"
+};
