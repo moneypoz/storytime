@@ -213,9 +213,14 @@ struct ModelDownloadView: View {
 
     // MARK: - Download
 
+    // TODO: Replace with your production CDN URL before shipping.
+    // Host model.safetensors behind HTTPS with a valid TLS cert.
+    // Consider CloudFront + S3, Cloudflare R2, or Hugging Face Hub private endpoint.
+    private static let modelURL = URL(string: "https://cdn.example.com/storytime/v1/model.safetensors")!
+
     private func startDownload() async {
         do {
-            for try await p in manager.downloadModel() {
+            for try await p in manager.downloadModel(from: Self.modelURL) {
                 progress = p
             }
 

@@ -658,52 +658,67 @@ struct RecordingView: View {
 // MARK: - LiveWaveformBar
 
 /// Waveform bar with two modes:
-///  • Live (`isLive = true`): height driven by real `level` from AVAudioPlayer meters
-///    with a per-bar phase offset so bars feel organic rather than in sync.
-///  • Idle (`isLive = false`): gentle breathing animation at a low fixed height,
-///    signalling "ready" without visual noise.
+///  • Live (`isLive = true`): height driven by real `level` from AVAudioPlayer meters.
+///    Each bar has a distinct sensitivity so they don't move in lockstep.
+///  • Idle (`isLive = false`): true organic breathing via @State + repeatForever.
+///    Each bar breathes between its own min/max range at its own speed and phase,
+///    so the group looks like a living thing rather than a synchronised graphic.
 private struct LiveWaveformBar: View {
     let index: Int
     let level: Float
     let isLive: Bool
     let color: Color
 
-    // Deterministic per-bar constants derived from index (stable across renders)
-    private let phaseOffset: Double    // stagger so bars don't move in unison
-    private let sensitivity: CGFloat   // each bar reacts slightly differently to level
-    private let idleHeight: CGFloat    // distinct resting height per bar
+    // Deterministic per-bar constants (stable across renders, derived from index)
+    private let sensitivity: CGFloat   // how much this bar reacts to audio level
+    private let breathMin:   CGFloat   // idle floor height
+    private let breathMax:   CGFloat   // idle peak height
+    private let breathSpeed: Double    // full cycle duration in seconds
+    private let breathDelay: Double    // stagger so bars are out of phase
+
+    /// Drives the idle breathing oscillation.
+    /// withAnimation(.repeatForever) in onAppear animates this between breathMin ↔ breathMax.
+    @State private var breathTarget: CGFloat
 
     init(index: Int, level: Float, isLive: Bool, color: Color) {
         self.index   = index
         self.level   = level
         self.isLive  = isLive
         self.color   = color
-        let seed     = Double(index)
-        phaseOffset  = (seed * 0.07).truncatingRemainder(dividingBy: 0.4)
-        sensitivity  = 0.7 + CGFloat((seed * 0.11).truncatingRemainder(dividingBy: 0.6))
-        idleHeight   = 4 + CGFloat((seed * 5.3).truncatingRemainder(dividingBy: 8))
+
+        let s        = Double(index)
+        sensitivity  = 0.65 + CGFloat((s * 0.13).truncatingRemainder(dividingBy: 0.55))
+        breathMin    = 3  + CGFloat((s * 3.7).truncatingRemainder(dividingBy: 6))   //  3–9 pt floor
+        breathMax    = 10 + CGFloat((s * 7.1).truncatingRemainder(dividingBy: 22))  // 10–32 pt peak
+        breathSpeed  = 0.8 + (s * 0.09).truncatingRemainder(dividingBy: 0.7)        // 0.8–1.5 s/cycle
+        breathDelay  = (s * 0.11).truncatingRemainder(dividingBy: 0.6)              // 0–0.6 s stagger
+
+        // Start at floor so the first animation sweeps upward
+        _breathTarget = State(initialValue: 3 + CGFloat((s * 3.7).truncatingRemainder(dividingBy: 6)))
     }
 
-    private var targetHeight: CGFloat {
-        if isLive {
-            let base: CGFloat = 6
-            let driven = CGFloat(level) * 48 * sensitivity
-            return max(base, min(52, base + driven))
-        } else {
-            return idleHeight
-        }
+    private var liveHeight: CGFloat {
+        let base: CGFloat = 5
+        return max(base, min(52, base + CGFloat(level) * 46 * sensitivity))
     }
 
     var body: some View {
         RoundedRectangle(cornerRadius: 3)
-            .fill(color.opacity(0.45 + Double(index % 7) * 0.07))
-            .frame(width: 4, height: targetHeight)
-            .animation(
-                isLive
-                    ? .easeOut(duration: 0.05)
-                    : .easeInOut(duration: 1.1 + phaseOffset).repeatForever(autoreverses: true),
-                value: targetHeight
-            )
+            .fill(color.opacity(0.42 + Double(index % 7) * 0.08))
+            .frame(width: 4, height: isLive ? liveHeight : breathTarget)
+            .animation(isLive ? .easeOut(duration: 0.05) : .spring(duration: 0.35), value: isLive)
+            .animation(isLive ? .easeOut(duration: 0.05) : nil, value: liveHeight)
+            .onAppear { startBreathing() }
+    }
+
+    private func startBreathing() {
+        withAnimation(
+            .easeInOut(duration: breathSpeed)
+                .repeatForever(autoreverses: true)
+                .delay(breathDelay)
+        ) {
+            breathTarget = breathMax
+        }
     }
 }
 

@@ -22,6 +22,15 @@ struct StoryScript: Hashable {
         let id = UUID()
         let mood: Mood
         let text: String
+        /// Single emoji shown in the player UI to indicate who is speaking.
+        /// Nil for stories without character distinction.
+        let speakerEmoji: String?
+
+        init(mood: Mood, text: String, speakerEmoji: String? = nil) {
+            self.mood = mood
+            self.text = text
+            self.speakerEmoji = speakerEmoji
+        }
 
         static func == (lhs: Segment, rhs: Segment) -> Bool { lhs.id == rhs.id }
         func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -68,31 +77,64 @@ enum PreloadedLibrary {
         title: "The Lion and the Mouse",
         taggedText: """
         <voice mood='normal'>A mighty lion lay sleeping in the forest when a little mouse scurried across his paw. The Lion awoke with a terrible roar and pinned the tiny creature under his great claw.</voice>
-        <voice mood='excited'>"How dare you wake me!" roared the Lion. "I shall eat you for this!" "Oh please, great Lion!" squeaked the Mouse. "Spare my life, and one day I may repay your kindness!" The Lion laughed, for what could a tiny mouse do for a great king? But he was amused, and set the Mouse free.</voice>
-        <voice mood='normal'>Not long after, the Lion fell into a hunter's net. He struggled and roared, but the ropes held fast. The little Mouse heard the Lion's cries and hurried to his side.</voice>
-        <voice mood='excited'>"Be still, dear Lion," said the Mouse. "I will help you." With his small sharp teeth, the Mouse gnawed through the ropes — one by one — until the Lion was free.</voice>
-        <voice mood='sleepy'>"You laughed when I promised to repay you," said the Mouse with a gentle smile. "Now you see: even the smallest friend can be the greatest help." And so they walked together, into the peaceful forest, as the stars began to appear.</voice>
+        <voice mood='excited'>"How dare you wake me!" roared the Lion. "I shall eat you for this!"</voice>
+        <voice mood='sleepy'>"Oh please, great Lion!" squeaked the Mouse. "Spare my life, and one day I may repay your kindness!"</voice>
+        <voice mood='normal'>The Lion laughed — for what could a tiny mouse do for a great king? But he was amused, and set the Mouse free. Not long after, the Lion fell into a hunter's net. He struggled and roared, but the ropes held fast. The little Mouse heard the Lion's cries and hurried to his side.</voice>
+        <voice mood='sleepy'>"Be still, dear Lion," said the Mouse. "I will help you."</voice>
+        <voice mood='normal'>With her small sharp teeth, the Mouse gnawed through the ropes — one by one — until the Lion was free.</voice>
+        <voice mood='sleepy'>"You laughed when I promised to repay you," said the Mouse with a gentle smile. "Now you see: even the smallest friend can be the greatest help."</voice>
+        <voice mood='sleepy'>And so they walked together, into the peaceful forest, as the stars began to appear.</voice>
         """,
         segments: [
+            // Scene 1 — The meeting
             .init(
                 mood: .normal,
-                text: "A mighty lion lay sleeping in the forest when a little mouse scurried across his paw. The Lion awoke with a terrible roar and pinned the tiny creature under his great claw."
+                text: "A mighty lion lay sleeping in the forest when a little mouse scurried across his paw. The Lion awoke with a terrible roar and pinned the tiny creature under his great claw.",
+                speakerEmoji: "🌿"
             ),
             .init(
                 mood: .excited,
-                text: "\"How dare you wake me!\" roared the Lion. \"I shall eat you for this!\" \"Oh please, great Lion!\" squeaked the Mouse. \"Spare my life, and one day I may repay your kindness!\" The Lion laughed, for what could a tiny mouse do for a great king? But he was amused, and set the Mouse free."
-            ),
-            .init(
-                mood: .normal,
-                text: "Not long after, the Lion fell into a hunter's net. He struggled and roared, but the ropes held fast. The little Mouse heard the Lion's cries and hurried to his side."
-            ),
-            .init(
-                mood: .excited,
-                text: "\"Be still, dear Lion,\" said the Mouse. \"I will help you.\" With his small sharp teeth, the Mouse gnawed through the ropes — one by one — until the Lion was free."
+                text: "\"How dare you wake me!\" roared the Lion. \"I shall eat you for this!\"",
+                speakerEmoji: "🦁"
             ),
             .init(
                 mood: .sleepy,
-                text: "\"You laughed when I promised to repay you,\" said the Mouse with a gentle smile. \"Now you see: even the smallest friend can be the greatest help.\" And so they walked together, into the peaceful forest, as the stars began to appear."
+                text: "\"Oh please, great Lion!\" squeaked the Mouse. \"Spare my life, and one day I may repay your kindness!\"",
+                speakerEmoji: "🐭"
+            ),
+            .init(
+                mood: .normal,
+                text: "The Lion laughed — for what could a tiny mouse do for a great king? But he was amused, and set the Mouse free.",
+                speakerEmoji: "🌿"
+            ),
+
+            // Scene 2 — The rescue
+            .init(
+                mood: .normal,
+                text: "Not long after, the Lion fell into a hunter's net. He struggled and roared, but the ropes held fast. The little Mouse heard the Lion's cries and hurried to his side.",
+                speakerEmoji: "🌿"
+            ),
+            .init(
+                mood: .sleepy,
+                text: "\"Be still, dear Lion,\" said the Mouse. \"I will help you.\"",
+                speakerEmoji: "🐭"
+            ),
+            .init(
+                mood: .normal,
+                text: "With her small sharp teeth, the Mouse gnawed through the ropes — one by one — until the Lion was free.",
+                speakerEmoji: "🌿"
+            ),
+
+            // Scene 3 — The moral
+            .init(
+                mood: .sleepy,
+                text: "\"You laughed when I promised to repay you,\" said the Mouse with a gentle smile. \"Now you see: even the smallest friend can be the greatest help.\"",
+                speakerEmoji: "🐭"
+            ),
+            .init(
+                mood: .sleepy,
+                text: "And so they walked together, into the peaceful forest, as the stars began to appear.",
+                speakerEmoji: "🌿"
             )
         ]
     )

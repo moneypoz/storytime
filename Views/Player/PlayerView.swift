@@ -27,6 +27,7 @@ struct PlayerView: View {
 
     @State private var glowVibrancy: AIGlowVibrancy = .standard
     @State private var atmosphereOpacity: Double = 1.0
+    @State private var heroOpacity: Double = 1.0
 
     // MARK: - Init
 
@@ -56,6 +57,18 @@ struct PlayerView: View {
         ZStack {
             DreamscapeBackground(atmosphereOpacity: atmosphereOpacity)
 
+            // Hero gradient — springs from card position → full screen, then fades to
+            // reveal DreamscapeBackground. On dismiss, snapped back to opacity 1 so the
+            // reverse geometry animation is visible.
+            LinearGradient(
+                colors: book.coverGradient,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .matchedGeometryEffect(id: book.id, in: namespace)
+            .ignoresSafeArea()
+            .opacity(heroOpacity)
+
             VStack(spacing: 0) {
                 closeButton
                     .padding(.top, 16)
@@ -63,7 +76,10 @@ struct PlayerView: View {
                 Spacer()
 
                 titleSection
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 24)
+
+                storySection
+                    .padding(.bottom, 32)
 
                 LiquidGlassOrb(
                     audioLevel: ttsPlayer.audioLevel,
@@ -74,7 +90,6 @@ struct PlayerView: View {
                     vibrancy: glowVibrancy,
                     color: book.coverGradient.first ?? DesignSystem.primaryPurple
                 )
-                .matchedGeometryEffect(id: book.id, in: namespace)
 
                 Spacer()
 
@@ -93,6 +108,12 @@ struct PlayerView: View {
                 .zIndex(2)
             }
         }
+        .onAppear {
+            // Fade hero out after the spring has settled
+            withAnimation(.easeOut(duration: 0.5).delay(0.5)) {
+                heroOpacity = 0
+            }
+        }
         .onChange(of: ttsPlayer.currentSegmentIndex) {
             updateAtmosphere()
         }
@@ -109,7 +130,10 @@ struct PlayerView: View {
         HStack {
             Spacer()
             Button {
-                withAnimation(DesignSystem.slowTransition) {
+                // Snap hero visible instantly so the reverse geometry animation
+                // (player → card) is visible during the dismiss spring.
+                heroOpacity = 1
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                     ttsPlayer.stop()
                     onDismiss()
                 }
@@ -138,6 +162,62 @@ struct PlayerView: View {
                 .foregroundStyle(.white.opacity(0.5))
         }
         .padding(.horizontal, 40)
+    }
+
+    // MARK: - Story Section
+
+    /// Glass text card with the character bubble anchored to its top-left corner.
+    ///
+    /// Layout math (CharacterNarratorView.containerSize = 120 pt):
+    ///   • The bubble container starts at the card's top-left via `.overlay(alignment: .topLeading)`.
+    ///   • Offset (x: 8, y: -12) nudges the 120×120 frame so the visual circle (72 pt,
+    ///     centered at 60,60 within the container) sits mostly inside the card while
+    ///     its top 12 pt hangs above the card edge.
+    ///   • `.padding(.top, 80)` pushes the first text line clear of the bubble's bottom
+    ///     edge (container y = 108 after offset), avoiding overlap.
+    @ViewBuilder
+    private var storySection: some View {
+        if let text = ttsPlayer.currentText {
+            Text(text)
+                .font(.system(size: 17, weight: .regular, design: .serif))
+                .foregroundStyle(.white.opacity(0.88))
+                .multilineTextAlignment(.leading)
+                .lineSpacing(4)
+                // Top padding reserves space for the bubble; horizontal padding is
+                // kept uniform so text reflows cleanly as segment length varies.
+                .padding(.top, 80)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(.white.opacity(0.08), lineWidth: 1)
+                        )
+                )
+                // Crossfade text on each segment advance
+                .id(ttsPlayer.currentSegmentIndex)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.35), value: ttsPlayer.currentSegmentIndex)
+                // Character bubble — top-left corner of the card
+                .overlay(alignment: .topLeading) {
+                    if ttsPlayer.currentEmoji != nil {
+                        CharacterNarratorView(
+                            emoji:       ttsPlayer.currentEmoji,
+                            audioLevel:  CGFloat(ttsPlayer.audioLevel),
+                            accentColor: book.coverGradient.first ?? DesignSystem.primaryPurple
+                        )
+                        .offset(x: 8, y: -12)
+                        .transition(.asymmetric(
+                            insertion: .scale.combined(with: .opacity),
+                            removal:   .opacity
+                        ))
+                    }
+                }
+                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: ttsPlayer.currentEmoji)
+        }
     }
 
     private var playbackStatus: String {
@@ -208,6 +288,12 @@ final class TTSPlayer: NSObject, ObservableObject {
     @Published private(set) var isFinished = false
     @Published private(set) var progress: Double = 0.0
     @Published private(set) var currentMood: StoryScript.Segment.Mood?
+
+    /// Speaker emoji for the active segment (e.g. 🦁 / 🐭 / 🌿).
+    /// Derived from `currentSegmentIndex` — updates automatically as playback advances.
+    var currentEmoji: String? { segments[safe: currentSegmentIndex]?.speakerEmoji ?? nil }
+    /// Full text of the active segment for UI highlighting.
+    var currentText: String?  { segments[safe: currentSegmentIndex]?.text }
 
     // ── Shared ──────────────────────────────────────────────────────────────
 
@@ -497,6 +583,14 @@ extension TTSPlayer: AVAudioPlayerDelegate {
             guard let self, isPlaying else { return }
             segmentDidFinish(currentSegmentIndex)
         }
+    }
+}
+
+// MARK: - Safe subscript
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
 

@@ -65,7 +65,7 @@ struct LibraryView: View {
                     namespace: playerTransition,
                     onDismiss: dismissPlayer
                 )
-                .transition(.opacity)
+                .transition(.identity)
                 .zIndex(1)
             }
         }
@@ -318,14 +318,20 @@ struct LibraryView: View {
     // MARK: - Actions
 
     private func presentPlayer(for book: Book) {
+        // Pre-synthesize segments 0 & 1 so TTSPlayer finds them in the disk
+        // cache when it calls synthesize() — audio starts with zero perceptible lag.
+        StoryPrefetchService.shared.prepare(book: book)
         selectedBook = book
-        withAnimation(.spring(duration: 0.5, bounce: 0.2)) {
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
             isPlayerPresented = true
         }
     }
 
     private func dismissPlayer() {
-        withAnimation(.spring(duration: 0.5, bounce: 0.2)) {
+        if let book = selectedBook {
+            StoryPrefetchService.shared.cancel(bookID: book.id)
+        }
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
             isPlayerPresented = false
             selectedBook = nil
         }
