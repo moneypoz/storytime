@@ -12,7 +12,7 @@ name = "voicebox_bridge"
 # The version "0.1" in the original Cargo.toml matched the older juntao/tch crate;
 # this is corrected to "0.3" for the current API documented at
 # https://github.com/TrevorS/qwen3-tts-rs
-qwen3_tts = { version = "0.3", features = ["hub", "metal"] }
+qwen3-tts = { git = "https://github.com/TrevorS/qwen3-tts-rs", features = ["hub", "metal"] }
 
 # UniFFI with tokio async bridge
 uniffi = { version = "0.28", features = ["tokio"] }
