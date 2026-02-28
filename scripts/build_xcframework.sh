@@ -54,65 +54,32 @@ SIM_LIB="${CRATE_DIR}/target/aarch64-apple-ios-sim/${PROFILE}/lib${LIB_NAME}.a"
 # ── Step 3: Generate Swift bindings via uniffi-bindgen ───────────────────────
 
 echo "▶ Generating UniFFI Swift bindings…"
-mkdir -p "${SWIFT_SOURCES}"
+BINDINGS_DIR="${CRATE_DIR}/bindings"
+mkdir -p "${BINDINGS_DIR}"
 
-cargo uniffi-bindgen generate \
+(cd "${CRATE_DIR}" && cargo run --bin uniffi-bindgen -- generate \
     --library "${DEVICE_LIB}" \
     --language swift \
-    --out-dir "${SWIFT_SOURCES}"
+    --out-dir "${BINDINGS_DIR}")
 
-echo "  → Swift sources written to ${SWIFT_SOURCES}"
+echo "  → Bindings written to ${BINDINGS_DIR}"
+
+# Copy Swift source to VoiceboxCore (replaces the stub voicebox_bridge.swift)
+mkdir -p "${SWIFT_SOURCES}"
+cp "${BINDINGS_DIR}"/*.swift "${SWIFT_SOURCES}/"
+echo "  → Swift source copied to ${SWIFT_SOURCES}"
 
 # ── Step 4: Package into XCFramework ─────────────────────────────────────────
+# Use -library + -headers (simpler than wrapping in .framework directories).
 
 echo "▶ Packaging XCFramework…"
 rm -rf "${XCFRAMEWORK}"
 mkdir -p "${FRAMEWORKS_DIR}"
 
-# Wrap each .a in a minimal .framework directory — xcodebuild -create-xcframework
-# requires frameworks or libraries with headers, not raw .a files.
-
-make_framework() {
-    local lib="$1"
-    local platform="$2"   # iphoneos | iphonesimulator
-    local out_dir="${FRAMEWORKS_DIR}/staging/${platform}"
-    local fw_dir="${out_dir}/${LIB_NAME}.framework"
-
-    rm -rf "${fw_dir}"
-    mkdir -p "${fw_dir}/Headers"
-
-    # Copy the static lib as the framework binary (no extension)
-    cp "${lib}" "${fw_dir}/${LIB_NAME}"
-
-    # Copy the generated C header
-    cp "${SWIFT_SOURCES}/${LIB_NAME}FFI.h" "${fw_dir}/Headers/"
-
-    # Minimal Info.plist
-    cat > "${fw_dir}/Info.plist" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>  <string>${LIB_NAME}</string>
-    <key>CFBundleIdentifier</key>  <string>com.storytime.${LIB_NAME}</string>
-    <key>CFBundlePackageType</key> <string>FMWK</string>
-    <key>MinimumOSVersion</key>    <string>17.0</string>
-</dict>
-</plist>
-PLIST
-
-    echo "${fw_dir}"
-}
-
-DEVICE_FW=$(make_framework "${DEVICE_LIB}" "iphoneos")
-SIM_FW=$(make_framework "${SIM_LIB}" "iphonesimulator")
-
 xcodebuild -create-xcframework \
-    -framework "${DEVICE_FW}" \
-    -framework "${SIM_FW}" \
+    -library "${DEVICE_LIB}"  -headers "${BINDINGS_DIR}" \
+    -library "${SIM_LIB}"     -headers "${BINDINGS_DIR}" \
     -output "${XCFRAMEWORK}"
-
-rm -rf "${FRAMEWORKS_DIR}/staging"
 
 echo "✔ XCFramework written to ${XCFRAMEWORK}"
 
@@ -120,8 +87,8 @@ echo "✔ XCFramework written to ${XCFRAMEWORK}"
 
 echo ""
 echo "Done. Next steps:"
-echo "  1. Open VoiceboxCore/Package.swift"
-echo "  2. Update the 'checksum' field with the output of:"
-echo "     swift package compute-checksum ${XCFRAMEWORK}"
+echo "  1. Delete VoiceboxCore/Sources/VoiceboxCore/voicebox_bridge.swift (the stub)"
+echo "  2. Restore the binaryTarget in VoiceboxCore/Package.swift (see swap checklist"
+echo "     at the top of voicebox_bridge.swift) — relativePath = Frameworks/VoiceboxBridge.xcframework"
 echo "  3. Build the storytime Xcode project — VoiceboxCore should resolve."
 echo ""

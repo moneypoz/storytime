@@ -14,8 +14,8 @@ name = "voicebox_bridge"
 # https://github.com/TrevorS/qwen3-tts-rs
 qwen3-tts = { git = "https://github.com/TrevorS/qwen3-tts-rs", features = ["hub", "metal"] }
 
-# UniFFI with tokio async bridge
-uniffi = { version = "0.28", features = ["tokio"] }
+# UniFFI with tokio async bridge + cli for running uniffi-bindgen via cargo run
+uniffi = { version = "0.31.0", features = ["tokio", "build", "cli"] }
 
 # Tokio runtime for spawn_blocking (runs synchronous inference off the UI thread)
 tokio = { version = "1", features = ["full"] }
@@ -32,7 +32,7 @@ thiserror = "1"
 
 [build-dependencies]
 # Generates Rust scaffolding from src/voicebox.udl at compile time.
-uniffi = { version = "0.28", features = ["build"] }
+uniffi = { version = "0.31.0", features = ["build"] }
 
 [profile.release]
 opt-level = 3
